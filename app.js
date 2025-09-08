@@ -1,4 +1,4 @@
-// Année courante (supprime le dernier <script> inline du HTML)
+// Année courante
 document.addEventListener('DOMContentLoaded', () => {
   const y = document.getElementById('year');
   if (y) y.textContent = new Date().getFullYear();
@@ -11,7 +11,7 @@ const REDIRECT_URL = window.location.href.split('#')[0];
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Boutons
+// Boutons (plus d’onclick inline)
 document.addEventListener('DOMContentLoaded', () => {
   const btnLogin = document.getElementById('btn-login');
   const btnLogout = document.getElementById('btn-logout');
