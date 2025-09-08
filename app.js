@@ -1,14 +1,34 @@
-// === GIGOT – app.js (prod) ===
+// === GIGOT – app.js (prod + inventaire, sans inline handlers) ===
 const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 const REDIRECT_URL = "https://jeniaa21.github.io/gigot-site/";
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ————— Utils UI —————
+function setYear() {
+  const y = document.getElementById("year");
+  if (y) y.textContent = new Date().getFullYear();
+}
+
+function updateAccessClasses(flags) {
+  const root = document.documentElement;
+  if (flags?.in_guild && (flags.hasBasic || flags.hasStaff)) {
+    root.classList.add("can-access");
+    if (flags.hasStaff) root.classList.add("is-staff");
+    else root.classList.remove("is-staff");
+    document.dispatchEvent(new CustomEvent("gigot-can-access", { detail: true }));
+  } else {
+    root.classList.remove("can-access", "is-staff");
+    document.dispatchEvent(new CustomEvent("gigot-can-access", { detail: false }));
+  }
+}
+
+// ————— Auth / rôles Discord —————
 async function syncDiscordRoles() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    document.documentElement.classList.remove("can-access","is-staff");
+    updateAccessClasses({ in_guild: false });
     return;
   }
 
@@ -22,22 +42,17 @@ async function syncDiscordRoles() {
     });
 
     const data = await res.json();
-
     if (!res.ok) {
-      // En cas d'échec (ex: pas dans la guilde), on retire les accès
-      document.documentElement.classList.remove("can-access","is-staff");
+      updateAccessClasses({ in_guild: false });
       return;
     }
-
-    if (data.in_guild && (data.hasBasic || data.hasStaff)) {
-      document.documentElement.classList.add("can-access");
-      if (data.hasStaff) document.documentElement.classList.add("is-staff");
-      else document.documentElement.classList.remove("is-staff");
-    } else {
-      document.documentElement.classList.remove("can-access","is-staff");
-    }
+    updateAccessClasses({
+      in_guild: !!data.in_guild,
+      hasBasic: !!data.hasBasic,
+      hasStaff: !!data.hasStaff
+    });
   } catch {
-    document.documentElement.classList.remove("can-access","is-staff");
+    updateAccessClasses({ in_guild: false });
   }
 }
 
@@ -55,34 +70,23 @@ async function loginWithDiscord() {
 
 async function logout() {
   await supabase.auth.signOut();
-  document.documentElement.classList.remove("can-access","is-staff");
+  updateAccessClasses({ in_guild: false });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Branche les boutons
-  const btnLogin = document.getElementById("btn-login");
-  const btnLogout = document.getElementById("btn-logout");
-  if (btnLogin)  btnLogin.addEventListener("click", loginWithDiscord);
-  if (btnLogout) btnLogout.addEventListener("click", logout);
-
-  // Premier sync + resync à chaque changement d’état
-  syncDiscordRoles();
-  supabase.auth.onAuthStateChange(() => syncDiscordRoles());
-});
+// ————— Inventaire (MVP) —————
 console.log("[GIGOT] Inventaire JS chargé");
-
-// === CONFIG ===
 const PAGE_SIZE = 10;
 
-// Variables d’état
 let items = [];
 let filtered = [];
 let currentPage = 1;
 let sortCol = "updated_at";
 let sortDir = "desc";
 
-// Récupère les items depuis Supabase
 async function fetchItems() {
+  // Si la section n’est pas visible (pas d’accès), ne rien faire
+  if (!document.documentElement.classList.contains("can-access")) return;
+
   const { data, error } = await supabase
     .from("items")
     .select("*")
@@ -90,27 +94,35 @@ async function fetchItems() {
 
   if (error) {
     console.error("[Inventaire] Erreur fetch:", error);
+    renderError("Impossible de charger l’inventaire.");
     return;
   }
   items = data || [];
   applyFilters();
 }
 
-// Applique recherche et pagination
+function renderError(msg) {
+  const tbody = document.getElementById("inv-body");
+  const pag = document.getElementById("pagination");
+  if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="padding:8px;">${msg}</td></tr>`;
+  if (pag) pag.innerHTML = "";
+}
+
 function applyFilters() {
-  const q = document.getElementById("search").value.toLowerCase();
+  const q = (document.getElementById("search")?.value || "").toLowerCase();
   filtered = items.filter(it =>
     [it.type, it.name, it.location, it.owner]
+      .map(v => (v || "").toString().toLowerCase())
       .join(" ")
-      .toLowerCase()
       .includes(q)
   );
+  currentPage = 1;
   renderTable();
 }
 
-// Affiche tableau + pagination
 function renderTable() {
   const tbody = document.getElementById("inv-body");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
   const start = (currentPage - 1) * PAGE_SIZE;
@@ -118,123 +130,168 @@ function renderTable() {
 
   for (const it of pageItems) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${it.type}</td>
-      <td>${it.name}</td>
-      <td>${it.location ?? ""}</td>
-      <td>${it.owner ?? ""}</td>
-      <td>${it.unit_price?.toFixed(2) ?? "0.00"}</td>
-      <td>${it.qty}</td>
-      <td>${it.valeur_totale?.toFixed(2) ?? "0.00"}</td>
-      <td>
-        <button onclick="editItem('${it.id}')">✏️</button>
-        <button onclick="deleteItem('${it.id}')">🗑️</button>
-      </td>
-    `;
+
+    const cells = [
+      it.type,
+      it.name,
+      it.location ?? "",
+      it.owner ?? "",
+      (Number(it.unit_price ?? 0)).toFixed(2),
+      String(it.qty ?? 0),
+      (Number(it.valeur_totale ?? 0)).toFixed(2)
+    ];
+
+    for (let i = 0; i < cells.length; i++) {
+      const td = document.createElement("td");
+      td.textContent = cells[i];
+      if (i >= 4) td.style.textAlign = "right";
+      tr.appendChild(td);
+    }
+
+    const actions = document.createElement("td");
+    const btnEdit = document.createElement("button");
+    btnEdit.className = "btn btn-ghost";
+    btnEdit.textContent = "✏️";
+    btnEdit.title = "Modifier";
+    btnEdit.addEventListener("click", () => openEditModal(it));
+
+    const btnDel = document.createElement("button");
+    btnDel.className = "btn btn-ghost";
+    btnDel.textContent = "🗑️";
+    btnDel.title = "Supprimer";
+    btnDel.style.marginLeft = "6px";
+    btnDel.addEventListener("click", () => deleteItem(it.id));
+
+    actions.appendChild(btnEdit);
+    actions.appendChild(btnDel);
+    tr.appendChild(actions);
+
     tbody.appendChild(tr);
   }
 
   renderPagination();
 }
 
-// Pagination simple
 function renderPagination() {
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
   const div = document.getElementById("pagination");
+  if (!div) return;
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
   div.innerHTML = "";
 
   for (let p = 1; p <= totalPages; p++) {
     const btn = document.createElement("button");
-    btn.textContent = p;
+    btn.textContent = String(p);
     btn.disabled = (p === currentPage);
-    btn.onclick = () => { currentPage = p; renderTable(); };
+    btn.addEventListener("click", () => { currentPage = p; renderTable(); });
     div.appendChild(btn);
   }
 }
 
-// Ouvre le modal
+// ——— Modal & CRUD ———
 function openModal(title, item = null) {
+  const modal = document.getElementById("modal");
+  if (!modal) return;
   document.getElementById("modal-title").textContent = title;
-  document.getElementById("modal").style.display = "block";
 
   document.getElementById("item-id").value = item?.id || "";
   document.getElementById("item-type").value = item?.type || "";
   document.getElementById("item-name").value = item?.name || "";
   document.getElementById("item-location").value = item?.location || "";
   document.getElementById("item-owner").value = item?.owner || "";
-  document.getElementById("item-unit_price").value = item?.unit_price || "";
-  document.getElementById("item-qty").value = item?.qty || "";
+  document.getElementById("item-unit_price").value = item?.unit_price ?? "";
+  document.getElementById("item-qty").value = item?.qty ?? "";
+
+  modal.style.display = "block";
 }
 
 function closeModal() {
-  document.getElementById("modal").style.display = "none";
+  const modal = document.getElementById("modal");
+  if (modal) modal.style.display = "none";
 }
 
-// Ajouter
-document.getElementById("btn-add").onclick = () => openModal("Nouvel item");
+function openAddModal() { openModal("Nouvel item"); }
+function openEditModal(it) { openModal("Modifier item", it); }
 
-// Annuler
-document.getElementById("btn-cancel").onclick = () => closeModal();
-
-// Soumettre (ajout ou édition)
-document.getElementById("form-item").onsubmit = async (e) => {
+async function saveItem(e) {
   e.preventDefault();
-  const id = document.getElementById("item-id").value;
+  const id = document.getElementById("item-id").value.trim();
   const payload = {
-    type: document.getElementById("item-type").value,
-    name: document.getElementById("item-name").value,
-    location: document.getElementById("item-location").value,
-    owner: document.getElementById("item-owner").value,
-    unit_price: parseFloat(document.getElementById("item-unit_price").value) || 0,
-    qty: parseInt(document.getElementById("item-qty").value) || 0
+    type: (document.getElementById("item-type").value || "").trim(),
+    name: (document.getElementById("item-name").value || "").trim(),
+    location: (document.getElementById("item-location").value || "").trim(),
+    owner: (document.getElementById("item-owner").value || "").trim(),
+    unit_price: parseFloat(document.getElementById("item-unit_price").value || "0") || 0,
+    qty: parseInt(document.getElementById("item-qty").value || "0", 10) || 0
   };
 
   let res;
-  if (id) {
-    res = await supabase.from("items").update(payload).eq("id", id);
-  } else {
-    res = await supabase.from("items").insert(payload);
-  }
+  if (id) res = await supabase.from("items").update(payload).eq("id", id);
+  else    res = await supabase.from("items").insert(payload);
 
   if (res.error) {
     alert("Erreur: " + res.error.message);
     return;
   }
-
   closeModal();
   fetchItems();
-};
-
-// Éditer
-async function editItem(id) {
-  const it = items.find(x => x.id === id);
-  if (it) openModal("Modifier item", it);
 }
 
-// Supprimer
 async function deleteItem(id) {
   if (!confirm("Supprimer cet item ?")) return;
   const { error } = await supabase.from("items").delete().eq("id", id);
-  if (error) alert("Erreur: " + error.message);
+  if (error) {
+    alert("Erreur: " + error.message);
+    return;
+  }
   fetchItems();
 }
 
-// Recherche
-document.getElementById("search").oninput = () => { currentPage = 1; applyFilters(); };
+// ————— Wiring DOM —————
+document.addEventListener("DOMContentLoaded", () => {
+  setYear();
 
-// Tri au clic sur l’en-tête
-document.querySelectorAll("#inv-table th[data-col]").forEach(th => {
-  th.style.cursor = "pointer";
-  th.onclick = () => {
-    const col = th.dataset.col;
-    if (sortCol === col) {
-      sortDir = (sortDir === "asc" ? "desc" : "asc");
-    } else {
-      sortCol = col; sortDir = "asc";
-    }
-    fetchItems();
-  };
+  // Boutons Auth
+  const btnLogin = document.getElementById("btn-login");
+  const btnLogout = document.getElementById("btn-logout");
+  if (btnLogin)  btnLogin.addEventListener("click", loginWithDiscord);
+  if (btnLogout) btnLogout.addEventListener("click", logout);
+
+  // Inventaire – contrôles
+  const search = document.getElementById("search");
+  if (search) search.addEventListener("input", () => { currentPage = 1; applyFilters(); });
+
+  // Tri au clic sur l’en-tête
+  document.querySelectorAll("#inv-table th[data-col]").forEach(th => {
+    th.style.cursor = "pointer";
+    th.addEventListener("click", () => {
+      const col = th.dataset.col;
+      if (sortCol === col) sortDir = (sortDir === "asc" ? "desc" : "asc");
+      else { sortCol = col; sortDir = "asc"; }
+      fetchItems();
+    });
+  });
+
+  // Modal & formulaire
+  const btnAdd = document.getElementById("btn-add");
+  const btnCancel = document.getElementById("btn-cancel");
+  const form = document.getElementById("form-item");
+  if (btnAdd) btnAdd.addEventListener("click", openAddModal);
+  if (btnCancel) btnCancel.addEventListener("click", closeModal);
+  if (form) form.addEventListener("submit", saveItem);
+
+  // Premier sync + resync à chaque changement d’état
+  syncDiscordRoles();
+  supabase.auth.onAuthStateChange(() => syncDiscordRoles());
 });
 
-// Init
-document.addEventListener("DOMContentLoaded", fetchItems);
+// Recharge l’inventaire uniquement quand on a l’accès
+document.addEventListener("gigot-can-access", (e) => {
+  if (e.detail === true) fetchItems();
+  else {
+    // Pas d’accès : vide l’UI inventaire
+    const tbody = document.getElementById("inv-body");
+    const pag = document.getElementById("pagination");
+    if (tbody) tbody.innerHTML = "";
+    if (pag) pag.innerHTML = "";
+  }
+});
