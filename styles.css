@@ -220,3 +220,52 @@ a:focus{ outline: 2px dashed var(--accent); outline-offset: 3px; }
 [data-staff] { display: none; }
 .is-staff [data-staff] { display: inline-block; }
 
+/* Table Inventaire */
+#inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background: #12192b;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+#inv-table th,
+#inv-table td {
+  border: 1px solid #2a324a;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+#inv-table th {
+  background: #1b2238;
+  cursor: pointer;
+}
+
+#inv-table tr:nth-child(even) {
+  background: #161d2e;
+}
+
+#inv-table tr:hover {
+  background: #202840;
+}
+
+/* Pagination boutons */
+#pagination {
+  margin-top: 1rem;
+}
+
+#pagination button {
+  margin: 0 2px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: #1b2238;
+  color: #fff;
+  cursor: pointer;
+}
+
+#pagination button:disabled {
+  background: #444a5e;
+  cursor: not-allowed;
+}
