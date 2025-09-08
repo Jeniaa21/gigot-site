@@ -14,23 +14,23 @@
   <!-- CSS -->
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- CSP : pas de frame-ancestors (inutile en <meta>), pas de inline JS -->
+  <!-- CSP (compatible GitHub Pages + styles inline utilisés dans le modal) -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net;
-    style-src 'self' https://fonts.googleapis.com;
-    font-src 'self' https://fonts.gstatic.com;
-    img-src 'self' data:;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src https://fonts.gstatic.com 'self';
+    img-src 'self' data: https:;
     connect-src 'self' https://fjhsakmjcdqpolccihyj.supabase.co;
     object-src 'none';
     base-uri 'self';
     upgrade-insecure-requests;
   ">
 
-  <!-- Supabase UMD (externe) -->
+  <!-- Supabase UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <!-- Ton JS applicatif (externe) -->
-  <script src="app.js?v=diag2" defer></script>
+  <!-- Ton JS applicatif -->
+  <script src="app.js?v=prod-inv1" defer></script>
 </head>
 
 <body>
@@ -48,7 +48,6 @@
           <li><a href="#recrutement">Recrutement</a></li>
           <li class="nav-cta">
             <div class="cta">
-              <!-- PLUS D’onclick inline : on met des IDs -->
               <button class="btn btn-primary" id="btn-login">Se connecter avec Discord</button>
               <button class="btn btn-ghost" id="btn-logout">Se déconnecter</button>
             </div>
@@ -135,7 +134,9 @@
     <section class="section" data-protected>
       <div class="container">
         <h2>Espace membres</h2>
-        <section id="inventaire" class="section" data-protected>
+
+        <!-- Inventaire -->
+        <section id="inventaire" class="section">
           <div class="container">
             <h2>Inventaire</h2>
 
@@ -162,7 +163,7 @@
             <!-- Pagination -->
             <div id="pagination"></div>
 
-            <!-- Bouton ajout -->
+            <!-- Bouton ajout (Option A : visible pour tous les membres) -->
             <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
           </div>
         </section>
@@ -182,6 +183,7 @@
             <button type="button" id="btn-cancel" class="btn btn-ghost">Annuler</button>
           </form>
         </div>
+      </div>
     </section>
 
     <!-- visible uniquement si rôle staff -->
