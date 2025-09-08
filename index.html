@@ -11,10 +11,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
 
-  <!-- CSS externe -->
+  <!-- CSS -->
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- (Optionnel mais recommandé) CSP adaptée à GitHub Pages + Supabase (jsDelivr) -->
+  <!-- CSP sans inline scripts -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net;
@@ -24,89 +24,13 @@
     connect-src 'self' https://fjhsakmjcdqpolccihyj.supabase.co;
     object-src 'none';
     base-uri 'self';
-    frame-ancestors 'none';
     upgrade-insecure-requests;
   ">
 
-  <!-- Supabase JS (UMD, compatible <script> non-module) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
-  <script>
-    // ⬇️ Remplace seulement si tes valeurs changent
-    const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
-
-    // IMPORTANT : sur GitHub Pages, on garde le chemin du repo
-    const REDIRECT_URL = window.location.href.split('#')[0];
-
-    // Client Supabase
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // Login avec Discord (OAuth)
-    async function loginWithDiscord() {
-      try {
-        await supabase.auth.signInWithOAuth({
-          provider: "discord",
-          options: {
-            scopes: "identify guilds",
-            redirectTo: REDIRECT_URL
-          }
-        });
-      } catch (e) {
-        console.error(e);
-        alert("Erreur OAuth Discord");
-      }
-    }
-
-    // Déconnexion
-    async function logout() {
-      await supabase.auth.signOut();
-      document.documentElement.classList.remove("can-access","is-staff");
-    }
-
-    // Appelle l’Edge Function pour récupérer les rôles et régler l’UI
-    async function syncDiscordRoles() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        document.documentElement.classList.remove("can-access","is-staff");
-        return { in_guild:false };
-      }
-      try {
-        const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-discord-roles`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-            "Content-Type": "application/json"
-          }
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "sync error");
-
-        if (data.in_guild && (data.hasBasic || data.hasStaff)) {
-          document.documentElement.classList.add("can-access");
-          if (data.hasStaff) document.documentElement.classList.add("is-staff");
-          else document.documentElement.classList.remove("is-staff");
-        } else {
-          document.documentElement.classList.remove("can-access","is-staff");
-        }
-        return data;
-      } catch (e) {
-        console.error(e);
-        document.documentElement.classList.remove("can-access","is-staff");
-        return { in_guild:false };
-      }
-    }
-
-    // Au chargement : si session présente (retour OAuth), on synchronise
-    document.addEventListener("DOMContentLoaded", async () => {
-      await syncDiscordRoles();
-    });
-
-    // Si l’état d’auth change (login/logout), on resynchronise
-    supabase.auth.onAuthStateChange(async () => {
-      await syncDiscordRoles();
-    });
-  </script>
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <!-- Ton JS applicatif (aucun inline) -->
+  <script src="app.js" defer></script>
 </head>
 
 <body>
@@ -124,8 +48,8 @@
           <li><a href="#recrutement">Recrutement</a></li>
           <li class="nav-cta">
             <div class="cta">
-              <button class="btn btn-primary" onclick="loginWithDiscord()">Se connecter avec Discord</button>
-              <button class="btn btn-ghost" onclick="logout()">Se déconnecter</button>
+              <button class="btn btn-primary" id="btn-login">Se connecter avec Discord</button>
+              <button class="btn btn-ghost" id="btn-logout">Se déconnecter</button>
             </div>
           </li>
         </ul>
@@ -206,35 +130,6 @@
       </div>
     </section>
 
-    <section id="fonctionnement" class="section">
-      <div class="container">
-        <h2>Fonctionnement interne</h2>
-
-        <div class="grid two">
-          <div>
-            <h3>Hiérarchie</h3>
-            <ul class="checklist">
-              <li><strong>Le Haut Conseil</strong> : les trois commandants en chef (Médicale, Industrielle, Militaire) qui planifient et arbitrent les orientations majeures.</li>
-              <li><strong>Garde Stratège</strong> : vétérans qui assistent la planification des missions complexes et la formation avancée.</li>
-              <li><strong>Garde Tactique</strong> : chefs d’escouade et leaders d’opération, autonomes sur le terrain dans le cadre de leur mission.</li>
-              <li><strong>Les Opérationnels</strong> : membres réguliers assignés à une division ; bras et yeux de G.I.G.O.T.</li>
-              <li><strong>Les Recrues</strong> : intégration, apprentissage des codes, procédures et du style « sérieux sans se prendre au sérieux ».</li>
-            </ul>
-          </div>
-
-          <div>
-            <h3>Culture interne</h3>
-            <ul class="bullets">
-              <li><strong>Aucune obligation de perf’</strong> : ce qui compte, c’est la solidarité et l’énergie commune.</li>
-              <li><strong>Rigueur &amp; humour</strong> : missions propres et procédures efficaces… avec une bonne dose d’absurde.</li>
-              <li><strong>Références maison</strong> : running gags, mascotte en forme de gigot à moitié cramé, memes et traditions.</li>
-              <li><strong>Une place pour chacun</strong> : débutant ou vétéran, on t’écoute, on te forme et on te laisse mener si tu t’en sens capable.</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- visible uniquement si l’utilisateur est dans la guilde + a un rôle autorisé -->
     <section class="section" data-protected>
       <div class="container">
@@ -270,10 +165,5 @@
       <a href="#content" class="to-top" aria-label="Revenir en haut">↑ Haut de page</a>
     </div>
   </footer>
-
-  <script>
-    // année courante
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
 </body>
 </html>
