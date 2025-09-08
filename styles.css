@@ -213,8 +213,10 @@ a:focus{ outline: 2px dashed var(--accent); outline-offset: 3px; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Accès conditionnel via classes posées sur <html> */
+/* Accès conditionnel */
 [data-protected] { display: none; }
 .can-access [data-protected] { display: block; }
+
 [data-staff] { display: none; }
-.is-staff [data-staff] { display: block; }
+.is-staff [data-staff] { display: inline-block; }
+
