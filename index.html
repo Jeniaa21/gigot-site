@@ -5,61 +5,108 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>G.I.G.O.T — L’absurde, organisé.</title>
   <meta name="description" content="G.I.G.O.T — Groupe d’Intervention Galactique Opérationnellement Taré. Corporation francophone, autonome, absurde et dangereusement efficace dans l’univers de Star Citizen." />
+
+  <!-- Polices -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <!-- CSS externe -->
   <link rel="stylesheet" href="styles.css" />
-<!-- Supabase JS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>
-  // ⬇️ REMPLACE par les valeurs de ton projet
-  const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 
-  // IMPORTANT : URL exacte de ta page (inclut le chemin /<repo>/), sans hash
-  const REDIRECT_URL = window.location.href.split('#')[0];
+  <!-- (Optionnel mais recommandé) CSP adaptée à GitHub Pages + Supabase (jsDelivr) -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://cdn.jsdelivr.net;
+    style-src 'self' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+    img-src 'self' data:;
+    connect-src 'self' https://fjhsakmjcdqpolccihyj.supabase.co;
+    object-src 'none';
+    base-uri 'self';
+    frame-ancestors 'none';
+    upgrade-insecure-requests;
+  ">
 
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  <!-- Supabase JS (UMD, compatible <script> non-module) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-  async function syncDiscordRoles() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return { in_guild:false };
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-discord-roles`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${session.access_token}`,
-        "Content-Type": "application/json"
+  <script>
+    // ⬇️ Remplace seulement si tes valeurs changent
+    const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
+
+    // IMPORTANT : sur GitHub Pages, on garde le chemin du repo
+    const REDIRECT_URL = window.location.href.split('#')[0];
+
+    // Client Supabase
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Login avec Discord (OAuth)
+    async function loginWithDiscord() {
+      try {
+        await supabase.auth.signInWithOAuth({
+          provider: "discord",
+          options: {
+            scopes: "identify guilds",
+            redirectTo: REDIRECT_URL
+          }
+        });
+      } catch (e) {
+        console.error(e);
+        alert("Erreur OAuth Discord");
       }
-    });
-    return await res.json();
-  }
+    }
 
-  async function loginWithDiscord() {
-    await supabase.auth.signInWithOAuth({
-      provider: "discord",
-      options: {
-        scopes: "identify guilds",
-        redirectTo: REDIRECT_URL
-      }
-    });
-  }
-
-  async function logout() {
-    await supabase.auth.signOut();
-    document.documentElement.classList.remove("can-access","is-staff");
-  }
-
-  document.addEventListener("DOMContentLoaded", async () => {
-    const data = await syncDiscordRoles();
-    if (data.in_guild && (data.hasBasic || data.hasStaff)) {
-      document.documentElement.classList.add("can-access");
-      if (data.hasStaff) document.documentElement.classList.add("is-staff");
-    } else {
+    // Déconnexion
+    async function logout() {
+      await supabase.auth.signOut();
       document.documentElement.classList.remove("can-access","is-staff");
     }
-  });
-</script>
 
+    // Appelle l’Edge Function pour récupérer les rôles et régler l’UI
+    async function syncDiscordRoles() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        document.documentElement.classList.remove("can-access","is-staff");
+        return { in_guild:false };
+      }
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-discord-roles`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+            "Content-Type": "application/json"
+          }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "sync error");
+
+        if (data.in_guild && (data.hasBasic || data.hasStaff)) {
+          document.documentElement.classList.add("can-access");
+          if (data.hasStaff) document.documentElement.classList.add("is-staff");
+          else document.documentElement.classList.remove("is-staff");
+        } else {
+          document.documentElement.classList.remove("can-access","is-staff");
+        }
+        return data;
+      } catch (e) {
+        console.error(e);
+        document.documentElement.classList.remove("can-access","is-staff");
+        return { in_guild:false };
+      }
+    }
+
+    // Au chargement : si session présente (retour OAuth), on synchronise
+    document.addEventListener("DOMContentLoaded", async () => {
+      await syncDiscordRoles();
+    });
+
+    // Si l’état d’auth change (login/logout), on resynchronise
+    supabase.auth.onAuthStateChange(async () => {
+      await syncDiscordRoles();
+    });
+  </script>
 </head>
 
 <body>
@@ -97,7 +144,6 @@
           <a class="btn btn-primary" href="https://robertsspaceindustries.com/orgs/RBB" target="_blank" rel="noopener noreferrer">Rejoindre sur Spectrum</a>
           <a class="btn btn-ghost" href="#histoire" aria-label="Découvrir notre histoire">Découvrir</a>
         </div>
-
       </div>
     </section>
 
@@ -139,22 +185,22 @@
           <article class="card">
             <h3>⚕️ Division Médicale</h3>
             <p class="eyebrow">Centre Médical Rumsteck</p>
-            <p>Au cœur de chaque sauvetage, la Division Médicale incarne la compassion et la rigueur. Interventions en zones de guerre, postes contaminés, crashs de vaisseaux ou sur planètes inhospitalières : dotée d’unités mobiles de soins avancés, d’une flotte dédiée et de protocoles d’intervention tactique, elle sauve des vies sans perdre son sang-froid.</p>
-            <p>Au-delà du secours, elle mène des recherches biomédicales, analyses de terrain et évaluations d’environnements toxiques. <em>Leur mantra :</em> « On ne laisse jamais un taré derrière. Sauf s’il l’a vraiment cherché. »</p>
+            <p>Au cœur de chaque sauvetage, la Division Médicale incarne la compassion et la rigueur. Interventions en zones de guerre, postes contaminés, crashs de vaisseaux ou sur planètes inhospitalières : dotée d’unités mobiles de soins avancés, d’une flotte dédiée et de protocoles d’intervention tactique, elle sauve des vies sans perdre son sang-froid.</p>
+            <p>Au-delà du secours, elle mène des recherches biomédicales, analyses de terrain et évaluations d’environnements toxiques. <em>Leur mantra :</em> « On ne laisse jamais un taré derrière. Sauf s’il l’a vraiment cherché. »</p>
           </article>
 
           <article class="card">
             <h3>💪 Division Industrielle</h3>
             <p class="eyebrow">Bacon Industries</p>
             <p>Pilier logistique et économique, la Division Industrielle gère extraction, transformation et mise en circulation des ressources. Capable d’opérations massives d’exploitation minière, d’optimiser des chaînes de raffinage et de négocier des contrats rentables, elle est dotée d’une flotte spécialisée (Mole, Reclaimer, Hull Series) pour fonctionner en autonomie.</p>
-            <p>Elle fabrique des composants, recycle des matériaux et assure le soutien logistique interdivisions. <em>Devise :</em> « Si tu veux la guerre, il te faudra d’abord notre carburant. »</p>
+            <p>Elle fabrique des composants, recycle des matériaux et assure le soutien logistique interdivisions. <em>Devise :</em> « Si tu veux la guerre, il te faudra d’abord notre carburant. »</p>
           </article>
 
           <article class="card">
             <h3>🌪️ Division Militaire</h3>
             <p class="eyebrow">Beef Jerky Mercenary</p>
-            <p>Bras armé de G.I.G.O.T, la Division Militaire incarne puissance, réactivité et tactique. Tireurs d’élite, pilotes de chasse, commandos et spécialistes du combat spatial/planétaire alternent infiltration discrète et assaut orbital. Équipement optimisé : armures lourdes, déploiements de Nova/Ballista, chasseurs pour la couverture aérienne.</p>
-            <p>Souvent en coopération avec le Renseignement et la Logistique, elle frappe vite, fort, et sans se faire remarquer – sauf si c’est le but. <em>Mantra :</em> « On discute après, s’il reste quelqu’un. »</p>
+            <p>Bras armé de G.I.G.O.T, la Division Militaire incarne puissance, réactivité et tactique. Tireurs d’élite, pilotes de chasse, commandos et spécialistes du combat spatial/planétaire alternent infiltration discrète et assaut orbital. Équipement optimisé : armures lourdes, déploiements de Nova/Ballista, chasseurs pour la couverture aérienne.</p>
+            <p>Souvent en coopération avec le Renseignement et la Logistique, elle frappe vite, fort, et sans se faire remarquer – sauf si c’est le but. <em>Mantra :</em> « On discute après, s’il reste quelqu’un. »</p>
           </article>
         </div>
       </div>
@@ -168,21 +214,21 @@
           <div>
             <h3>Hiérarchie</h3>
             <ul class="checklist">
-              <li><strong>Le Haut Conseil</strong> : les trois commandants en chef (Médicale, Industrielle, Militaire) qui planifient et arbitrent les orientations majeures.</li>
-              <li><strong>Garde Stratège</strong> : vétérans qui assistent la planification des missions complexes et la formation avancée.</li>
-              <li><strong>Garde Tactique</strong> : chefs d’escouade et leaders d’opération, autonomes sur le terrain dans le cadre de leur mission.</li>
-              <li><strong>Les Opérationnels</strong> : membres réguliers assignés à une division ; bras et yeux de G.I.G.O.T.</li>
-              <li><strong>Les Recrues</strong> : intégration, apprentissage des codes, procédures et du style « sérieux sans se prendre au sérieux ».</li>
+              <li><strong>Le Haut Conseil</strong> : les trois commandants en chef (Médicale, Industrielle, Militaire) qui planifient et arbitrent les orientations majeures.</li>
+              <li><strong>Garde Stratège</strong> : vétérans qui assistent la planification des missions complexes et la formation avancée.</li>
+              <li><strong>Garde Tactique</strong> : chefs d’escouade et leaders d’opération, autonomes sur le terrain dans le cadre de leur mission.</li>
+              <li><strong>Les Opérationnels</strong> : membres réguliers assignés à une division ; bras et yeux de G.I.G.O.T.</li>
+              <li><strong>Les Recrues</strong> : intégration, apprentissage des codes, procédures et du style « sérieux sans se prendre au sérieux ».</li>
             </ul>
           </div>
 
           <div>
             <h3>Culture interne</h3>
             <ul class="bullets">
-              <li><strong>Aucune obligation de perf’</strong> : ce qui compte, c’est la solidarité et l’énergie commune.</li>
-              <li><strong>Rigueur &amp; humour</strong> : missions propres et procédures efficaces… avec une bonne dose d’absurde.</li>
-              <li><strong>Références maison</strong> : running gags, mascotte en forme de gigot à moitié cramé, memes et traditions.</li>
-              <li><strong>Une place pour chacun</strong> : débutant ou vétéran, on t’écoute, on te forme et on te laisse mener si tu t’en sens capable.</li>
+              <li><strong>Aucune obligation de perf’</strong> : ce qui compte, c’est la solidarité et l’énergie commune.</li>
+              <li><strong>Rigueur &amp; humour</strong> : missions propres et procédures efficaces… avec une bonne dose d’absurde.</li>
+              <li><strong>Références maison</strong> : running gags, mascotte en forme de gigot à moitié cramé, memes et traditions.</li>
+              <li><strong>Une place pour chacun</strong> : débutant ou vétéran, on t’écoute, on te forme et on te laisse mener si tu t’en sens capable.</li>
             </ul>
           </div>
         </div>
@@ -205,11 +251,10 @@
       </div>
     </section>
 
-
     <section id="recrutement" class="section section-accent">
       <div class="container">
         <h2>Recrutement</h2>
-        <p>Envie de rejoindre une équipe « tarée, mais opérationnelle » ? Dis-nous qui tu es, ta division de cœur, et ce que tu as envie d’apporter. On discutera… s’il reste quelqu’un.</p>
+        <p>Envie de rejoindre une équipe « tarée, mais opérationnelle » ? Dis-nous qui tu es, ta division de cœur, et ce que tu as envie d’apporter. On discutera… s’il reste quelqu’un.</p>
         <div class="cta">
           <a class="btn btn-primary" href="https://discord.gg/krV7cMn2Nj" target="_blank" rel="noopener noreferrer">Discord</a>
           <a class="btn btn-primary" href="https://robertsspaceindustries.com/orgs/RBB" target="_blank" rel="noopener noreferrer">Spectrum</a>
