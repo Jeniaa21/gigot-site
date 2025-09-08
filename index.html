@@ -9,58 +9,59 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
-  <!-- Supabase JS -->
-  <script src="https://esm.run/@supabase/supabase-js@2"></script>
-  <script>
-    // ⬇️ REMPLACE par les valeurs de ton projet
-    const SUPABASE_URL = "https://<PROJECT_REF>.supabase.co";
-    const SUPABASE_ANON_KEY = "<ANON_PUBLIC_KEY>";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<!-- Supabase JS -->
+<script src="https://esm.run/@supabase/supabase-js@2"></script>
+<script>
+  // ⬇️ REMPLACE par les valeurs de ton projet
+  const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 
-    // Helper: après login (ou au chargement), synchronise avec ta fonction Edge
-    async function syncDiscordRoles() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return { in_guild:false };
+  // IMPORTANT : URL exacte de ta page (inclut le chemin /<repo>/), sans hash
+  const REDIRECT_URL = window.location.href.split('#')[0];
 
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-discord-roles`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-          "Content-Type": "application/json"
-        }
-      });
-      return await res.json();
-    }
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Connexion Discord (OAuth)
-    async function loginWithDiscord() {
-      await supabase.auth.signInWithOAuth({
-        provider: "discord",
-        options: {
-          scopes: "identify guilds",
-          redirectTo: window.location.origin // ← ajoute bien cet URL côté Supabase (Auth > Redirect URLs)
-        }
-      });
-    }
-
-    // Déconnexion
-    async function logout() {
-      await supabase.auth.signOut();
-      document.documentElement.classList.remove("can-access","is-staff");
-      // Facultatif: recharge la page
-      // location.reload();
-    }
-
-    // Au chargement: s'il existe déjà une session, synchronise l'accès
-    document.addEventListener("DOMContentLoaded", async () => {
-      const data = await syncDiscordRoles();
-      if (data.in_guild && (data.hasBasic || data.hasStaff)) {
-        document.documentElement.classList.add("can-access");
-        if (data.hasStaff) document.documentElement.classList.add("is-staff");
+  async function syncDiscordRoles() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return { in_guild:false };
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-discord-roles`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
       }
     });
-  </script>
+    return await res.json();
+  }
+
+  async function loginWithDiscord() {
+    await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        scopes: "identify guilds",
+        redirectTo: REDIRECT_URL
+      }
+    });
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    document.documentElement.classList.remove("can-access","is-staff");
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const data = await syncDiscordRoles();
+    if (data.in_guild && (data.hasBasic || data.hasStaff)) {
+      document.documentElement.classList.add("can-access");
+      if (data.hasStaff) document.documentElement.classList.add("is-staff");
+    } else {
+      document.documentElement.classList.remove("can-access","is-staff");
+    }
+  });
+</script>
+
 </head>
+
 <body>
   <header class="site-header">
     <div class="container nav-wrap">
@@ -74,15 +75,17 @@
           <li><a href="#divisions">Divisions</a></li>
           <li><a href="#fonctionnement">Fonctionnement</a></li>
           <li><a href="#recrutement">Recrutement</a></li>
-          <div class="cta">
-            <button class="btn btn-primary" onclick="loginWithDiscord()">Se connecter avec Discord</button>
-            <button class="btn btn-ghost" onclick="logout()">Se déconnecter</button>
-          </div>
+          <li class="nav-cta">
+            <div class="cta">
+              <button class="btn btn-primary" onclick="loginWithDiscord()">Se connecter avec Discord</button>
+              <button class="btn btn-ghost" onclick="logout()">Se déconnecter</button>
+            </div>
+          </li>
         </ul>
       </nav>
     </div>
   </header>
-
+  
   <main id="content" class="site-main">
     <section class="hero">
       <div class="container">
