@@ -131,6 +131,7 @@ function renderTable() {
   for (const it of pageItems) {
     const tr = document.createElement("tr");
 
+    // cellules de données
     const cells = [
       it.type,
       it.name,
@@ -140,15 +141,16 @@ function renderTable() {
       String(it.qty ?? 0),
       (Number(it.valeur_totale ?? 0)).toFixed(2)
     ];
-
-    for (let i = 0; i < cells.length; i++) {
+    cells.forEach((val, i) => {
       const td = document.createElement("td");
-      td.textContent = cells[i];
-      if (i >= 4) td.style.textAlign = "right";
+      td.textContent = val;
+      if (i >= 4) td.style.textAlign = "right"; // aligner montants/qty à droite
       tr.appendChild(td);
-    }
+    });
 
+    // cellule actions (sans inline JS)
     const actions = document.createElement("td");
+
     const btnEdit = document.createElement("button");
     btnEdit.className = "btn btn-ghost";
     btnEdit.textContent = "✏️";
