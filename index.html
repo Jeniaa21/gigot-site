@@ -135,8 +135,53 @@
     <section class="section" data-protected>
       <div class="container">
         <h2>Espace membres</h2>
-        <p>Bienvenue dans l’espace réservé G.I.G.O.T.</p>
-      </div>
+        <section id="inventaire" class="section" data-protected>
+          <div class="container">
+            <h2>Inventaire</h2>
+
+            <!-- Recherche -->
+            <input type="text" id="search" placeholder="Rechercher..." />
+
+            <!-- Tableau -->
+            <table id="inv-table">
+              <thead>
+                <tr>
+                  <th data-col="type">Type</th>
+                  <th data-col="name">Item</th>
+                  <th data-col="location">Lieu</th>
+                  <th data-col="owner">Possesseur</th>
+                  <th data-col="unit_price">Prix unitaire</th>
+                  <th data-col="qty">Quantité</th>
+                  <th data-col="valeur_totale">Valeur totale</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inv-body"></tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div id="pagination"></div>
+
+            <!-- Bouton ajout -->
+            <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
+          </div>
+        </section>
+
+        <!-- Modal (ajout / édition) -->
+        <div id="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#12192b; padding:20px; border-radius:8px; z-index:1000;">
+          <h3 id="modal-title">Nouvel item</h3>
+          <form id="form-item">
+            <input type="hidden" id="item-id" />
+            <input type="text" id="item-type" placeholder="Type" required /><br/>
+            <input type="text" id="item-name" placeholder="Item" required /><br/>
+            <input type="text" id="item-location" placeholder="Lieu" /><br/>
+            <input type="text" id="item-owner" placeholder="Possesseur" /><br/>
+            <input type="number" id="item-unit_price" placeholder="Prix unitaire" step="0.01" /><br/>
+            <input type="number" id="item-qty" placeholder="Quantité" /><br/>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="button" id="btn-cancel" class="btn btn-ghost">Annuler</button>
+          </form>
+        </div>
     </section>
 
     <!-- visible uniquement si rôle staff -->

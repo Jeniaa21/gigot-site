@@ -69,3 +69,172 @@ document.addEventListener("DOMContentLoaded", () => {
   syncDiscordRoles();
   supabase.auth.onAuthStateChange(() => syncDiscordRoles());
 });
+console.log("[GIGOT] Inventaire JS chargé");
+
+// === CONFIG ===
+const PAGE_SIZE = 10;
+
+// Variables d’état
+let items = [];
+let filtered = [];
+let currentPage = 1;
+let sortCol = "updated_at";
+let sortDir = "desc";
+
+// Récupère les items depuis Supabase
+async function fetchItems() {
+  const { data, error } = await supabase
+    .from("items")
+    .select("*")
+    .order(sortCol, { ascending: sortDir === "asc" });
+
+  if (error) {
+    console.error("[Inventaire] Erreur fetch:", error);
+    return;
+  }
+  items = data || [];
+  applyFilters();
+}
+
+// Applique recherche et pagination
+function applyFilters() {
+  const q = document.getElementById("search").value.toLowerCase();
+  filtered = items.filter(it =>
+    [it.type, it.name, it.location, it.owner]
+      .join(" ")
+      .toLowerCase()
+      .includes(q)
+  );
+  renderTable();
+}
+
+// Affiche tableau + pagination
+function renderTable() {
+  const tbody = document.getElementById("inv-body");
+  tbody.innerHTML = "";
+
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  for (const it of pageItems) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${it.type}</td>
+      <td>${it.name}</td>
+      <td>${it.location ?? ""}</td>
+      <td>${it.owner ?? ""}</td>
+      <td>${it.unit_price?.toFixed(2) ?? "0.00"}</td>
+      <td>${it.qty}</td>
+      <td>${it.valeur_totale?.toFixed(2) ?? "0.00"}</td>
+      <td>
+        <button onclick="editItem('${it.id}')">✏️</button>
+        <button onclick="deleteItem('${it.id}')">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  renderPagination();
+}
+
+// Pagination simple
+function renderPagination() {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+  const div = document.getElementById("pagination");
+  div.innerHTML = "";
+
+  for (let p = 1; p <= totalPages; p++) {
+    const btn = document.createElement("button");
+    btn.textContent = p;
+    btn.disabled = (p === currentPage);
+    btn.onclick = () => { currentPage = p; renderTable(); };
+    div.appendChild(btn);
+  }
+}
+
+// Ouvre le modal
+function openModal(title, item = null) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal").style.display = "block";
+
+  document.getElementById("item-id").value = item?.id || "";
+  document.getElementById("item-type").value = item?.type || "";
+  document.getElementById("item-name").value = item?.name || "";
+  document.getElementById("item-location").value = item?.location || "";
+  document.getElementById("item-owner").value = item?.owner || "";
+  document.getElementById("item-unit_price").value = item?.unit_price || "";
+  document.getElementById("item-qty").value = item?.qty || "";
+}
+
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+}
+
+// Ajouter
+document.getElementById("btn-add").onclick = () => openModal("Nouvel item");
+
+// Annuler
+document.getElementById("btn-cancel").onclick = () => closeModal();
+
+// Soumettre (ajout ou édition)
+document.getElementById("form-item").onsubmit = async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("item-id").value;
+  const payload = {
+    type: document.getElementById("item-type").value,
+    name: document.getElementById("item-name").value,
+    location: document.getElementById("item-location").value,
+    owner: document.getElementById("item-owner").value,
+    unit_price: parseFloat(document.getElementById("item-unit_price").value) || 0,
+    qty: parseInt(document.getElementById("item-qty").value) || 0
+  };
+
+  let res;
+  if (id) {
+    res = await supabase.from("items").update(payload).eq("id", id);
+  } else {
+    res = await supabase.from("items").insert(payload);
+  }
+
+  if (res.error) {
+    alert("Erreur: " + res.error.message);
+    return;
+  }
+
+  closeModal();
+  fetchItems();
+};
+
+// Éditer
+async function editItem(id) {
+  const it = items.find(x => x.id === id);
+  if (it) openModal("Modifier item", it);
+}
+
+// Supprimer
+async function deleteItem(id) {
+  if (!confirm("Supprimer cet item ?")) return;
+  const { error } = await supabase.from("items").delete().eq("id", id);
+  if (error) alert("Erreur: " + error.message);
+  fetchItems();
+}
+
+// Recherche
+document.getElementById("search").oninput = () => { currentPage = 1; applyFilters(); };
+
+// Tri au clic sur l’en-tête
+document.querySelectorAll("#inv-table th[data-col]").forEach(th => {
+  th.style.cursor = "pointer";
+  th.onclick = () => {
+    const col = th.dataset.col;
+    if (sortCol === col) {
+      sortDir = (sortDir === "asc" ? "desc" : "asc");
+    } else {
+      sortCol = col; sortDir = "asc";
+    }
+    fetchItems();
+  };
+});
+
+// Init
+document.addEventListener("DOMContentLoaded", fetchItems);
