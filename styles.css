@@ -213,13 +213,6 @@ a:focus{ outline: 2px dashed var(--accent); outline-offset: 3px; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Accès conditionnel */
-[data-protected] { display: none; }
-.can-access [data-protected] { display: block; }
-
-[data-staff] { display: none; }
-.is-staff [data-staff] { display: inline-block; }
-
 /* Table Inventaire */
 #inv-table {
   width: 100%;
@@ -269,3 +262,10 @@ a:focus{ outline: 2px dashed var(--accent); outline-offset: 3px; }
   background: #444a5e;
   cursor: not-allowed;
 }
+
+/* Accès conditionnel */
+[data-protected] { display: none; }
+.can-access [data-protected] { display: block; }
+
+[data-staff] { display: none; }
+.is-staff [data-staff] { display: inline-block; }
