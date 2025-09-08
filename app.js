@@ -1,49 +1,11 @@
-// Année courante
-document.addEventListener('DOMContentLoaded', () => {
-  const y = document.getElementById('year');
-  if (y) y.textContent = new Date().getFullYear();
-});
-
-// === Supabase Auth (Discord) ===
-const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
-const REDIRECT_URL = window.location.href.split('#')[0];
-
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Boutons (plus d’onclick inline)
-document.addEventListener('DOMContentLoaded', () => {
-  const btnLogin = document.getElementById('btn-login');
-  const btnLogout = document.getElementById('btn-logout');
-
-  if (btnLogin) btnLogin.addEventListener('click', loginWithDiscord);
-  if (btnLogout) btnLogout.addEventListener('click', logout);
-
-  // Sync au chargement
-  syncDiscordRoles();
-});
-
-// Login
-async function loginWithDiscord() {
-  await supabase.auth.signInWithOAuth({
-    provider: "discord",
-    options: { scopes: "identify guilds", redirectTo: REDIRECT_URL }
-  });
-}
-
-// Logout
-async function logout() {
-  await supabase.auth.signOut();
-  document.documentElement.classList.remove("can-access","is-staff");
-}
-
-// Sync rôles via Edge Function
+// Remplace TOUTE ta fonction syncDiscordRoles() par celle-ci
 async function syncDiscordRoles() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     document.documentElement.classList.remove("can-access","is-staff");
     return;
   }
+
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-discord-roles`, {
       method: "POST",
@@ -52,23 +14,46 @@ async function syncDiscordRoles() {
         "Content-Type": "application/json"
       }
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "sync error");
 
-    if (data.in_guild && (data.hasBasic || data.hasStaff)) {
+    // Lis le corps *avant* de décider quoi faire (ça peut contenir le détail Discord)
+    const raw = await res.text();
+    let data = null;
+    try { data = JSON.parse(raw); } catch { /* ce n'est pas du JSON, on garde raw */ }
+
+    if (!res.ok) {
+      console.error("Edge Function error:", { httpStatus: res.status, body: data ?? raw });
+      // Affiche un message utile à l’écran
+      const discordStatus = data?.discord_status;
+      const discordBody = data?.discord_body;
+      let hint = "";
+      if (discordStatus === 401) {
+        hint = "→ DISCORD_BOT_TOKEN invalide/expiré (regénère le token du bot et remets-le dans Supabase).";
+      } else if (discordStatus === 403) {
+        hint = "→ Permissions/Intents du bot insuffisants (active SERVER MEMBERS INTENT et vérifie ses droits dans la guilde).";
+      } else if (discordStatus === 404) {
+        hint = "→ L’utilisateur n’est pas dans la guilde (cas normal si la personne n’a pas rejoint le Discord).";
+      }
+      alert(
+        `Erreur Edge Function ${res.status}\n` +
+        (data?.error ? `Message: ${data.error}\n` : "") +
+        (discordStatus ? `Discord status: ${discordStatus}\n` : "") +
+        (discordBody ? `Discord body: ${typeof discordBody === "string" ? discordBody : JSON.stringify(discordBody)}\n` : "") +
+        (hint ? `\n${hint}` : "")
+      );
+      return;
+    }
+
+    // Succès : applique les classes d’accès
+    if (data?.in_guild && (data?.hasBasic || data?.hasStaff)) {
       document.documentElement.classList.add("can-access");
-      if (data.hasStaff) document.documentElement.classList.add("is-staff");
+      if (data?.hasStaff) document.documentElement.classList.add("is-staff");
       else document.documentElement.classList.remove("is-staff");
     } else {
       document.documentElement.classList.remove("can-access","is-staff");
     }
   } catch (e) {
     console.error(e);
+    alert("Impossible d’appeler l’Edge Function (réseau/CORS). Regarde la console.");
     document.documentElement.classList.remove("can-access","is-staff");
   }
 }
-
-// Re-sync sur changement d’état
-supabase.auth.onAuthStateChange(async () => {
-  await syncDiscordRoles();
-});
