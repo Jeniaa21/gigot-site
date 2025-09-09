@@ -137,7 +137,8 @@ async function fetchItems() {
     ...it,
     valeur_totale: it.valeur_totale ?? (Number(it.unit_price || 0) * Number(it.qty || 0))
   }));
-
+  
+  await loadDatalists();
   applyFilters();
 }
 
@@ -221,9 +222,10 @@ function renderPagination() {
 }
 
 // ——— Modal & CRUD ———
-function openModal(title, item = null) {
+async function openModal(title, item = null) {
   const modal = document.getElementById("modal");
   if (!modal) return;
+
   document.getElementById("modal-title").textContent = title;
 
   document.getElementById("item-id").value = item?.id || "";
@@ -234,8 +236,12 @@ function openModal(title, item = null) {
   document.getElementById("item-unit_price").value = item?.unit_price ?? "";
   document.getElementById("item-qty").value = item?.qty ?? "";
 
+  // charge les listes avant d’afficher
+  await loadDatalists();
+
   modal.style.display = "block";
 }
+
 
 function closeModal() {
   const modal = document.getElementById("modal");
@@ -410,6 +416,41 @@ async function loadDatalists() {
         opt.value = val;
         dl.appendChild(opt);
       });
+    }
+  }
+}
+
+// --- Autocomplete depuis la table items ---
+async function loadDatalists() {
+  const conf = [
+    { col: "type",     dl: "dl-types" },
+    { col: "name",     dl: "dl-names" },
+    { col: "location", dl: "dl-locations" },
+    { col: "owner",    dl: "dl-owners" },
+  ];
+
+  for (const { col, dl } of conf) {
+    const { data, error } = await supabase
+      .from("items")
+      .select(col)
+      .not(col, "is", null);
+
+    if (error) {
+      console.error("[Inventaire] datalist error", col, error);
+      continue;
+    }
+
+    const values = [...new Set((data || [])
+      .map(r => (r[col] || "").trim())
+      .filter(Boolean))].sort();
+
+    const el = document.getElementById(dl);
+    if (!el) continue;
+    el.innerHTML = "";
+    for (const v of values) {
+      const opt = document.createElement("option");
+      opt.value = v;
+      el.appendChild(opt);
     }
   }
 }
