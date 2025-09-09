@@ -269,32 +269,25 @@ async function saveItem(e) {
   e.preventDefault();
 
   const id = document.getElementById("item-id").value.trim();
+  const unit_price = parseFloat(document.getElementById("item-unit_price").value || "0") || 0;
+  const qty = parseInt(document.getElementById("item-qty").value || "0", 10) || 0;
+
   const payload = {
     type: (document.getElementById("item-type").value || "").trim(),
     name: (document.getElementById("item-name").value || "").trim(),
     location: (document.getElementById("item-location").value || "").trim(),
     owner: (document.getElementById("item-owner").value || "").trim(),
-    unit_price: parseFloat(document.getElementById("item-unit_price").value || "0") || 0,
-    qty: parseInt(document.getElementById("item-qty").value || "0", 10) || 0
+    unit_price,
+    qty,
+    valeur_totale: unit_price * qty,
+    updated_at: new Date().toISOString()
   };
-  payload.valeur_totale = Number(payload.unit_price) * Number(payload.qty);
 
   try {
     let res;
     if (id) {
-      // Cas 1 : il existe une colonne id et elle est renseignée
       res = await supabase.from("items").update(payload).eq("id", id).select();
-    } else if (editingKey) {
-      // Cas 2 : pas d’id -> on matche sur la clé composite ORIGINALE
-      const where = {
-        type: editingKey.type ?? null,
-        name: editingKey.name ?? null,
-        location: editingKey.location ?? null,
-        owner: editingKey.owner ?? null
-      };
-      res = await supabase.from("items").update(payload).match(where).select();
     } else {
-      // Cas 3 : création
       res = await supabase.from("items").insert(payload).select();
     }
 
@@ -303,14 +296,15 @@ async function saveItem(e) {
       alert("Erreur: " + res.error.message);
       return;
     }
+
     closeModal();
-    editingKey = null;
     await fetchItems();
   } catch (err) {
     console.error("[Inventaire] save catch:", err);
     alert("Erreur inattendue lors de l’enregistrement.");
   }
 }
+
 
 async function deleteItem(row) {
   // row peut ne pas avoir id -> on gère les deux cas
