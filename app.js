@@ -234,7 +234,6 @@ function openModal(title, item = null) {
   document.getElementById("item-unit_price").value = item?.unit_price ?? "";
   document.getElementById("item-qty").value = item?.qty ?? "";
 
-  await loadDatalists();
   modal.style.display = "block";
 }
 
