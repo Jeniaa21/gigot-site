@@ -1,4 +1,4 @@
-// === GIGOT – app.js (prod fixes final) ===
+// === GIGOT – app.js (prod fixes + fallback sans id) ===
 const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 const REDIRECT_URL = "https://jeniaa21.github.io/gigot-site/";
@@ -102,6 +102,9 @@ let currentPage = 1;
 let sortCol = "updated_at";
 let sortDir = "desc";
 
+// stocke la clé originale quand on édite (pour tables sans id)
+let editingKey = null; // {id?, type, name, location, owner}
+
 function renderError(msg) {
   const tbody = document.getElementById("inv-body");
   const pag = document.getElementById("pagination");
@@ -117,7 +120,6 @@ function clearInventoryUI() {
 }
 
 async function fetchItems() {
-  // Charger uniquement si l’espace est visible/autorisé
   if (!document.documentElement.classList.contains("can-access")) return;
 
   const { data, error } = await supabase
@@ -131,7 +133,6 @@ async function fetchItems() {
     return;
   }
 
-  // Assure valeur_totale si non stockée côté DB
   items = (data || []).map(it => ({
     ...it,
     valeur_totale: it.valeur_totale ?? (Number(it.unit_price || 0) * Number(it.qty || 0))
@@ -191,7 +192,8 @@ function renderTable() {
     btnDel.textContent = "🗑️";
     btnDel.title = "Supprimer";
     btnDel.style.marginLeft = "6px";
-    btnDel.addEventListener("click", () => deleteItem(it.id));
+    // ⚠️ on passe TOUT l'objet (pas juste id)
+    btnDel.addEventListener("click", () => deleteItem(it));
 
     actions.appendChild(btnEdit);
     actions.appendChild(btnDel);
@@ -234,12 +236,27 @@ function openModal(title, item = null) {
 
   modal.style.display = "block";
 }
+
 function closeModal() {
   const modal = document.getElementById("modal");
   if (modal) modal.style.display = "none";
 }
-function openAddModal() { openModal("Nouvel item"); }
-function openEditModal(it) { openModal("Modifier item", it); }
+
+function openAddModal() {
+  editingKey = null;
+  openModal("Nouvel item");
+}
+function openEditModal(it) {
+  // mémorise la clé originale (utile si pas d’id)
+  editingKey = {
+    id: it.id,
+    type: it.type,
+    name: it.name,
+    location: it.location,
+    owner: it.owner
+  };
+  openModal("Modifier item", it);
+}
 
 async function saveItem(e) {
   e.preventDefault();
@@ -258,9 +275,19 @@ async function saveItem(e) {
   try {
     let res;
     if (id) {
-      // update + .select() pour forcer la réponse (et détecter erreurs RLS)
+      // Cas 1 : il existe une colonne id et elle est renseignée
       res = await supabase.from("items").update(payload).eq("id", id).select();
+    } else if (editingKey) {
+      // Cas 2 : pas d’id -> on matche sur la clé composite ORIGINALE
+      const where = {
+        type: editingKey.type ?? null,
+        name: editingKey.name ?? null,
+        location: editingKey.location ?? null,
+        owner: editingKey.owner ?? null
+      };
+      res = await supabase.from("items").update(payload).match(where).select();
     } else {
+      // Cas 3 : création
       res = await supabase.from("items").insert(payload).select();
     }
 
@@ -270,6 +297,7 @@ async function saveItem(e) {
       return;
     }
     closeModal();
+    editingKey = null;
     await fetchItems();
   } catch (err) {
     console.error("[Inventaire] save catch:", err);
@@ -277,10 +305,24 @@ async function saveItem(e) {
   }
 }
 
-async function deleteItem(id) {
+async function deleteItem(row) {
+  // row peut ne pas avoir id -> on gère les deux cas
   if (!confirm("Supprimer cet item ?")) return;
   try {
-    const { error } = await supabase.from("items").delete().eq("id", id);
+    let error = null;
+    if (row?.id) {
+      ({ error } = await supabase.from("items").delete().eq("id", row.id));
+    } else {
+      // suppression via clé composite
+      const match = {
+        type: row.type ?? null,
+        name: row.name ?? null,
+        location: row.location ?? null,
+        owner: row.owner ?? null
+      };
+      ({ error } = await supabase.from("items").delete().match(match));
+    }
+
     if (error) {
       console.error("[Inventaire] delete error:", error);
       alert("Erreur: " + error.message);
@@ -323,7 +365,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnCancel = document.getElementById("btn-cancel");
   const form = document.getElementById("form-item");
   if (btnAdd) btnAdd.addEventListener("click", openAddModal);
-  if (btnCancel) btnCancel.addEventListener("click", closeModal);
+  if (btnCancel) btnCancel.addEventListener("click", () => { editingKey = null; closeModal(); });
   if (form) form.addEventListener("submit", saveItem);
 
   // Restaure la session si présente et synchronise
