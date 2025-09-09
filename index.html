@@ -30,7 +30,7 @@
   <!-- Supabase UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <!-- App -->
-  <script src="app.js?v=prod-fix5" defer></script>
+  <script src="app.js?v=inv-fix-full" defer></script>
 </head>
 
 <body>
@@ -104,7 +104,6 @@
     <section id="divisions" class="section">
       <div class="container">
         <h2>Divisions</h2>
-
         <div class="grid cards">
           <article class="card">
             <h3>⚕️ Division Médicale</h3>
@@ -127,15 +126,14 @@
       </div>
     </section>
 
-    <!-- >>> SECTION FONCTIONNEMENT (ancre réparée) -->
     <section id="fonctionnement" class="section">
       <div class="container">
         <h2>Fonctionnement</h2>
-        <p>Hiérarchie, règles internes, culture… (contenu à compléter comme tu veux).</p>
+        <p>Hiérarchie, règles internes, culture… (contenu à compléter).</p>
       </div>
     </section>
 
-    <!-- visible uniquement si l’utilisateur est dans la guilde + a un rôle autorisé -->
+    <!-- visible uniquement si l’utilisateur est autorisé -->
     <section class="section" data-protected>
       <div class="container">
         <h2>Espace membres</h2>
@@ -145,10 +143,8 @@
           <div class="container">
             <h2>Inventaire</h2>
 
-            <!-- Recherche -->
             <input type="text" id="search" placeholder="Rechercher..." />
 
-            <!-- Tableau -->
             <table id="inv-table">
               <thead>
                 <tr>
@@ -165,17 +161,14 @@
               <tbody id="inv-body"></tbody>
             </table>
 
-            <!-- Pagination -->
             <div id="pagination"></div>
-
-            <!-- Bouton ajout -->
             <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
           </div>
         </section>
       </div>
     </section>
 
-    <!-- Modal (ajout / édition) — positionné hors des sections pour éviter tout conflit -->
+    <!-- Modal (ajout / édition) -->
     <div id="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#12192b; padding:20px; border-radius:18px; z-index:1000; border:1px solid #1e2a42; box-shadow:0 10px 30px rgba(0,0,0,.35); width:min(560px, 92vw);">
       <h3 id="modal-title">Nouvel item</h3>
       <form id="form-item">
@@ -192,14 +185,6 @@
         </div>
       </form>
     </div>
-
-    <!-- visible uniquement si rôle staff -->
-    <section class="section" data-staff>
-      <div class="container">
-        <h2>Staff</h2>
-        <p>Outils et infos pour l’équipe staff.</p>
-      </div>
-    </section>
 
     <section id="recrutement" class="section section-accent">
       <div class="container">
