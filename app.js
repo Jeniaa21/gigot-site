@@ -1,4 +1,4 @@
-// === GIGOT – app.js (prod + inventaire, sans inline handlers) ===
+// === GIGOT – app.js (prod + inventaire, propre) ===
 const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 const REDIRECT_URL = "https://jeniaa21.github.io/gigot-site/";
@@ -26,6 +26,7 @@ function updateAccessClasses(flags) {
 
 // ————— Auth / rôles Discord —————
 async function syncDiscordRoles() {
+  console.info("[GIGOT] Sync Discord roles…");
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     updateAccessClasses({ in_guild: false });
@@ -40,9 +41,9 @@ async function syncDiscordRoles() {
         "Content-Type": "application/json"
       }
     });
-
     const data = await res.json();
     if (!res.ok) {
+      console.warn("[GIGOT] Sync failed:", data);
       updateAccessClasses({ in_guild: false });
       return;
     }
@@ -51,7 +52,8 @@ async function syncDiscordRoles() {
       hasBasic: !!data.hasBasic,
       hasStaff: !!data.hasStaff
     });
-  } catch {
+  } catch (err) {
+    console.error("[GIGOT] Sync error:", err);
     updateAccessClasses({ in_guild: false });
   }
 }
@@ -71,6 +73,7 @@ async function loginWithDiscord() {
 async function logout() {
   await supabase.auth.signOut();
   updateAccessClasses({ in_guild: false });
+  clearInventoryUI();
 }
 
 // ————— Inventaire (MVP) —————
@@ -84,7 +87,6 @@ let sortCol = "updated_at";
 let sortDir = "desc";
 
 async function fetchItems() {
-  // Si la section n’est pas visible (pas d’accès), ne rien faire
   if (!document.documentElement.classList.contains("can-access")) return;
 
   const { data, error } = await supabase
@@ -97,7 +99,12 @@ async function fetchItems() {
     renderError("Impossible de charger l’inventaire.");
     return;
   }
-  items = data || [];
+
+  items = (data || []).map(it => ({
+    ...it,
+    valeur_totale: it.valeur_totale ?? (Number(it.unit_price || 0) * Number(it.qty || 0))
+  }));
+
   applyFilters();
 }
 
@@ -131,7 +138,6 @@ function renderTable() {
   for (const it of pageItems) {
     const tr = document.createElement("tr");
 
-    // cellules de données
     const cells = [
       it.type,
       it.name,
@@ -144,13 +150,11 @@ function renderTable() {
     cells.forEach((val, i) => {
       const td = document.createElement("td");
       td.textContent = val;
-      if (i >= 4) td.style.textAlign = "right"; // aligner montants/qty à droite
+      if (i >= 4) td.style.textAlign = "right";
       tr.appendChild(td);
     });
 
-    // cellule actions (sans inline JS)
     const actions = document.createElement("td");
-
     const btnEdit = document.createElement("button");
     btnEdit.className = "btn btn-ghost";
     btnEdit.textContent = "✏️";
@@ -187,6 +191,13 @@ function renderPagination() {
     btn.addEventListener("click", () => { currentPage = p; renderTable(); });
     div.appendChild(btn);
   }
+}
+
+function clearInventoryUI() {
+  const tbody = document.getElementById("inv-body");
+  const pag = document.getElementById("pagination");
+  if (tbody) tbody.innerHTML = "";
+  if (pag) pag.innerHTML = "";
 }
 
 // ——— Modal & CRUD ———
@@ -252,17 +263,17 @@ async function deleteItem(id) {
 document.addEventListener("DOMContentLoaded", () => {
   setYear();
 
-  // Boutons Auth
+  // Auth
   const btnLogin = document.getElementById("btn-login");
   const btnLogout = document.getElementById("btn-logout");
   if (btnLogin)  btnLogin.addEventListener("click", loginWithDiscord);
   if (btnLogout) btnLogout.addEventListener("click", logout);
 
-  // Inventaire – contrôles
+  // Inventaire – recherche
   const search = document.getElementById("search");
   if (search) search.addEventListener("input", () => { currentPage = 1; applyFilters(); });
 
-  // Tri au clic sur l’en-tête
+  // Tri
   document.querySelectorAll("#inv-table th[data-col]").forEach(th => {
     th.style.cursor = "pointer";
     th.addEventListener("click", () => {
@@ -273,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Modal & formulaire
+  // Modal
   const btnAdd = document.getElementById("btn-add");
   const btnCancel = document.getElementById("btn-cancel");
   const form = document.getElementById("form-item");
@@ -281,19 +292,13 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnCancel) btnCancel.addEventListener("click", closeModal);
   if (form) form.addEventListener("submit", saveItem);
 
-  // Premier sync + resync à chaque changement d’état
+  // Premier sync + resync
   syncDiscordRoles();
   supabase.auth.onAuthStateChange(() => syncDiscordRoles());
 });
 
-// Recharge l’inventaire uniquement quand on a l’accès
+// ——— Rafraîchir l’inventaire quand accès autorisé ———
 document.addEventListener("gigot-can-access", (e) => {
   if (e.detail === true) fetchItems();
-  else {
-    // Pas d’accès : vide l’UI inventaire
-    const tbody = document.getElementById("inv-body");
-    const pag = document.getElementById("pagination");
-    if (tbody) tbody.innerHTML = "";
-    if (pag) pag.innerHTML = "";
-  }
+  else clearInventoryUI();
 });

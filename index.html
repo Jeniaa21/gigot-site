@@ -14,7 +14,7 @@
   <!-- CSS -->
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- CSP (compatible GitHub Pages + styles inline utilisés dans le modal) -->
+  <!-- CSP (compatible GitHub Pages + quelques styles inline pour le modal) -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net;
@@ -29,8 +29,8 @@
 
   <!-- Supabase UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <!-- Ton JS applicatif -->
-  <script src="app.js?v=prod-inv1" defer></script>
+  <!-- Ton JS applicatif (⚠️ garde ce nom/version pour casser le cache après MAJ) -->
+  <script src="app.js?v=prod-inv4" defer></script>
 </head>
 
 <body>
@@ -134,6 +134,96 @@
     <section class="section" data-protected>
       <div class="container">
         <h2>Espace membres</h2>
+
+        <!-- Panneau CONTROLES inline (mouvement + filtres) -->
+        <section id="inv-controls" class="section">
+          <div class="container">
+            <div class="toolbar">
+              <h3 style="margin:0;">Gestion d’inventaire</h3>
+              <div id="inv-summary" class="summary"></div>
+            </div>
+
+            <!-- Formulaire Mouvement -->
+            <form id="form-mvt" autocomplete="off" class="card">
+              <h4 style="margin-top:0;">Mouvement de stock</h4>
+
+              <div class="seg">
+                <label><input type="radio" name="dir" value="in" checked> Entrée</label>
+                <label><input type="radio" name="dir" value="out"> Sortie</label>
+              </div>
+
+              <div class="grid-two">
+                <label>Type
+                  <input id="mvt-type" list="dl-type" placeholder="Ex: Médical" required>
+                  <datalist id="dl-type"></datalist>
+                  <small id="badge-type" class="badge"></small>
+                </label>
+
+                <label>Item
+                  <input id="mvt-name" list="dl-name" placeholder="Ex: MedPen" required>
+                  <datalist id="dl-name"></datalist>
+                  <small id="badge-name" class="badge"></small>
+                </label>
+              </div>
+
+              <div class="grid-two">
+                <label>Lieu
+                  <input id="mvt-location" list="dl-location" placeholder="Ex: Area18">
+                  <datalist id="dl-location"></datalist>
+                  <small id="badge-location" class="badge"></small>
+                </label>
+
+                <label>Possesseur
+                  <input id="mvt-owner" list="dl-owner" placeholder="Ex: Garde Tactique">
+                  <datalist id="dl-owner"></datalist>
+                  <small id="badge-owner" class="badge"></small>
+                </label>
+              </div>
+
+              <div class="grid-two">
+                <label>Quantité
+                  <input id="mvt-qty" type="number" min="1" step="1" value="1" required>
+                </label>
+                <label>Prix unitaire (optionnel)
+                  <input id="mvt-unit" type="number" min="0" step="0.01" placeholder="0.00">
+                </label>
+              </div>
+
+              <div class="actions">
+                <button type="submit" class="btn btn-primary">Valider</button>
+                <button type="button" id="mvt-reset" class="btn btn-ghost">Réinitialiser</button>
+                <div id="mvt-debug" class="debug" hidden></div>
+              </div>
+            </form>
+
+            <!-- Filtres inline -->
+            <form id="form-filters" class="card" style="margin-top:12px;">
+              <h4 style="margin-top:0;">Filtres</h4>
+              <div class="grid-two">
+                <label>Type
+                  <select id="flt-type" multiple></select>
+                </label>
+                <label>Item
+                  <select id="flt-name" multiple></select>
+                </label>
+              </div>
+              <div class="grid-two">
+                <label>Lieu
+                  <select id="flt-location" multiple></select>
+                </label>
+                <label>Possesseur
+                  <select id="flt-owner" multiple></select>
+                </label>
+              </div>
+              <div class="actions">
+                <button type="submit" class="btn btn-primary">Appliquer</button>
+                <button type="button" id="filters-clear" class="btn btn-ghost">Effacer</button>
+              </div>
+              <div id="filters-chips" class="chips"></div>
+              <div id="flt-debug" class="debug" hidden></div>
+            </form>
+          </div>
+        </section>
 
         <!-- Inventaire -->
         <section id="inventaire" class="section">
