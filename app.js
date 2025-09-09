@@ -137,9 +137,9 @@ async function fetchItems() {
     ...it,
     valeur_totale: it.valeur_totale ?? (Number(it.unit_price || 0) * Number(it.qty || 0))
   }));
-  
-  await loadDatalists();
+
   applyFilters();
+  await loadDatalists();
 }
 
 function applyFilters() {
@@ -236,11 +236,12 @@ async function openModal(title, item = null) {
   document.getElementById("item-unit_price").value = item?.unit_price ?? "";
   document.getElementById("item-qty").value = item?.qty ?? "";
 
-  // charge les listes avant d’afficher
+  // Charge les listes (Type / Item / Lieu / Possesseur)
   await loadDatalists();
 
   modal.style.display = "block";
 }
+
 
 
 function closeModal() {
@@ -394,30 +395,12 @@ document.addEventListener("gigot-can-access", (e) => {
 
 // Charger les valeurs distinctes pour autocomplete
 async function loadDatalists() {
-  const fields = ["type", "name", "location", "owner"];
-
-  for (const f of fields) {
-    const { data, error } = await supabase
-      .from("items")
-      .select(f, { count: "exact" })
-      .not(f, "is", null);
-
-    if (error) {
-      console.error("[Inventaire] Erreur datalist:", f, error);
-      continue;
-    }
-
-    const values = [...new Set(data.map(row => row[f]?.trim()).filter(Boolean))].sort();
-    const dl = document.getElementById("dl-" + (f === "name" ? "names" : f + "s"));
-    if (dl) {
-      dl.innerHTML = "";
-      values.forEach(val => {
-        const opt = document.createElement("option");
-        opt.value = val;
-        dl.appendChild(opt);
-      });
-    }
-  }
+  await Promise.all([
+    loadColumnToDatalist("type",     "dl-types"),
+    loadColumnToDatalist("name",     "dl-names"),
+    loadColumnToDatalist("location", "dl-locations"),
+    loadColumnToDatalist("owner",    "dl-owners"),
+  ]);
 }
 
 // --- Autocomplete depuis la table items ---
@@ -453,4 +436,40 @@ async function loadDatalists() {
       el.appendChild(opt);
     }
   }
+}
+
+// --- Autocomplete depuis Supabase (datalist) ---
+async function loadColumnToDatalist(col, dlId) {
+  // Ne tente que si l'espace est accessible (optionnel)
+  if (!document.documentElement.classList.contains("can-access")) return;
+
+  const dl = document.getElementById(dlId);
+  if (!dl) return;
+
+  // Récupère les valeurs non-nulles / non vides
+  const { data, error } = await supabase
+    .from("items")
+    .select(col)
+    .not(col, "is", null)   // exclut NULL
+    .neq(col, "");          // exclut chaîne vide
+
+  if (error) {
+    console.error("[Inventaire] datalist error", col, error);
+    return;
+  }
+
+  // Uniques + tri
+  const values = [...new Set((data || [])
+    .map(r => (r[col] || "").trim())
+    .filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+
+  // Remplit le <datalist>
+  dl.innerHTML = "";
+  for (const v of values) {
+    const opt = document.createElement("option");
+    opt.value = v;
+    dl.appendChild(opt);
+  }
+
+  console.debug(`[Inventaire] datalist ${dlId}:`, values.length, "valeurs");
 }
