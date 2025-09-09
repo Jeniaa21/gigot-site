@@ -1,14 +1,30 @@
-// === GIGOT – app.js (prod + inventaire, propre) ===
+// === GIGOT – app.js (prod fixes) ===
 const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 const REDIRECT_URL = "https://jeniaa21.github.io/gigot-site/";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Client Supabase avec session persistante
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: "pkce",
+    storage: window.localStorage
+  }
+});
 
 // ————— Utils UI —————
 function setYear() {
   const y = document.getElementById("year");
   if (y) y.textContent = new Date().getFullYear();
+}
+
+function setAuthButtons(isLoggedIn) {
+  const btnLogin = document.getElementById("btn-login");
+  const btnLogout = document.getElementById("btn-logout");
+  if (btnLogin) btnLogin.style.display = isLoggedIn ? "none" : "inline-flex";
+  if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
 }
 
 function updateAccessClasses(flags) {
@@ -26,8 +42,9 @@ function updateAccessClasses(flags) {
 
 // ————— Auth / rôles Discord —————
 async function syncDiscordRoles() {
-  console.info("[GIGOT] Sync Discord roles…");
   const { data: { session } } = await supabase.auth.getSession();
+  setAuthButtons(!!session);
+
   if (!session) {
     updateAccessClasses({ in_guild: false });
     return;
@@ -43,7 +60,8 @@ async function syncDiscordRoles() {
     });
     const data = await res.json();
     if (!res.ok) {
-      console.warn("[GIGOT] Sync failed:", data);
+      console.warn("[GIGOT] Sync roles KO:", data);
+      // même si KO, on garde la session utilisateur (compte)
       updateAccessClasses({ in_guild: false });
       return;
     }
@@ -72,11 +90,12 @@ async function loginWithDiscord() {
 
 async function logout() {
   await supabase.auth.signOut();
+  setAuthButtons(false);
   updateAccessClasses({ in_guild: false });
   clearInventoryUI();
 }
 
-// ————— Inventaire (MVP) —————
+// ————— Inventaire —————
 console.log("[GIGOT] Inventaire JS chargé");
 const PAGE_SIZE = 10;
 
@@ -86,7 +105,22 @@ let currentPage = 1;
 let sortCol = "updated_at";
 let sortDir = "desc";
 
+function renderError(msg) {
+  const tbody = document.getElementById("inv-body");
+  const pag = document.getElementById("pagination");
+  if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="padding:8px;">${msg}</td></tr>`;
+  if (pag) pag.innerHTML = "";
+}
+
+function clearInventoryUI() {
+  const tbody = document.getElementById("inv-body");
+  const pag = document.getElementById("pagination");
+  if (tbody) tbody.innerHTML = "";
+  if (pag) pag.innerHTML = "";
+}
+
 async function fetchItems() {
+  // chargé uniquement si espace accessible
   if (!document.documentElement.classList.contains("can-access")) return;
 
   const { data, error } = await supabase
@@ -106,13 +140,6 @@ async function fetchItems() {
   }));
 
   applyFilters();
-}
-
-function renderError(msg) {
-  const tbody = document.getElementById("inv-body");
-  const pag = document.getElementById("pagination");
-  if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="padding:8px;">${msg}</td></tr>`;
-  if (pag) pag.innerHTML = "";
 }
 
 function applyFilters() {
@@ -193,13 +220,6 @@ function renderPagination() {
   }
 }
 
-function clearInventoryUI() {
-  const tbody = document.getElementById("inv-body");
-  const pag = document.getElementById("pagination");
-  if (tbody) tbody.innerHTML = "";
-  if (pag) pag.innerHTML = "";
-}
-
 // ——— Modal & CRUD ———
 function openModal(title, item = null) {
   const modal = document.getElementById("modal");
@@ -227,6 +247,7 @@ function openEditModal(it) { openModal("Modifier item", it); }
 
 async function saveItem(e) {
   e.preventDefault();
+
   const id = document.getElementById("item-id").value.trim();
   const payload = {
     type: (document.getElementById("item-type").value || "").trim(),
@@ -237,39 +258,51 @@ async function saveItem(e) {
     qty: parseInt(document.getElementById("item-qty").value || "0", 10) || 0
   };
 
-  let res;
-  if (id) res = await supabase.from("items").update(payload).eq("id", id);
-  else    res = await supabase.from("items").insert(payload);
+  try {
+    let res;
+    if (id) res = await supabase.from("items").update(payload).eq("id", id).select();
+    else    res = await supabase.from("items").insert(payload).select();
 
-  if (res.error) {
-    alert("Erreur: " + res.error.message);
-    return;
+    if (res.error) {
+      console.error("[Inventaire] save error:", res.error);
+      alert("Erreur: " + res.error.message);
+      return;
+    }
+    closeModal();
+    await fetchItems();
+  } catch (err) {
+    console.error("[Inventaire] save catch:", err);
+    alert("Erreur inattendue lors de l’enregistrement.");
   }
-  closeModal();
-  fetchItems();
 }
 
 async function deleteItem(id) {
   if (!confirm("Supprimer cet item ?")) return;
-  const { error } = await supabase.from("items").delete().eq("id", id);
-  if (error) {
-    alert("Erreur: " + error.message);
-    return;
+  try {
+    const { error } = await supabase.from("items").delete().eq("id", id);
+    if (error) {
+      console.error("[Inventaire] delete error:", error);
+      alert("Erreur: " + error.message);
+      return;
+    }
+    await fetchItems();
+  } catch (err) {
+    console.error("[Inventaire] delete catch:", err);
+    alert("Erreur inattendue lors de la suppression.");
   }
-  fetchItems();
 }
 
 // ————— Wiring DOM —————
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   setYear();
 
-  // Auth
+  // Auth buttons
   const btnLogin = document.getElementById("btn-login");
   const btnLogout = document.getElementById("btn-logout");
   if (btnLogin)  btnLogin.addEventListener("click", loginWithDiscord);
   if (btnLogout) btnLogout.addEventListener("click", logout);
 
-  // Inventaire – recherche
+  // Recherche
   const search = document.getElementById("search");
   if (search) search.addEventListener("input", () => { currentPage = 1; applyFilters(); });
 
@@ -292,12 +325,19 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnCancel) btnCancel.addEventListener("click", closeModal);
   if (form) form.addEventListener("submit", saveItem);
 
-  // Premier sync + resync
-  syncDiscordRoles();
-  supabase.auth.onAuthStateChange(() => syncDiscordRoles());
+  // Restaure la session si présente et synchronise
+  const { data: { session } } = await supabase.auth.getSession();
+  setAuthButtons(!!session);
+  await syncDiscordRoles();
+
+  // Resync sur changement d’état
+  supabase.auth.onAuthStateChange(async (_event, sess) => {
+    setAuthButtons(!!sess);
+    await syncDiscordRoles();
+  });
 });
 
-// ——— Rafraîchir l’inventaire quand accès autorisé ———
+// Rafraîchir l’inventaire quand accès autorisé
 document.addEventListener("gigot-can-access", (e) => {
   if (e.detail === true) fetchItems();
   else clearInventoryUI();

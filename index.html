@@ -14,7 +14,7 @@
   <!-- CSS -->
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- CSP (compatible GitHub Pages + quelques styles inline pour le modal) -->
+  <!-- CSP (scripts externes uniquement) -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net;
@@ -29,8 +29,8 @@
 
   <!-- Supabase UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <!-- Ton JS applicatif (⚠️ garde ce nom/version pour casser le cache après MAJ) -->
-  <script src="app.js?v=prod-inv4" defer></script>
+  <!-- App -->
+  <script src="app.js?v=prod-fix5" defer></script>
 </head>
 
 <body>
@@ -49,7 +49,7 @@
           <li class="nav-cta">
             <div class="cta">
               <button class="btn btn-primary" id="btn-login">Se connecter avec Discord</button>
-              <button class="btn btn-ghost" id="btn-logout">Se déconnecter</button>
+              <button class="btn btn-ghost" id="btn-logout" style="display:none;">Se déconnecter</button>
             </div>
           </li>
         </ul>
@@ -109,24 +109,29 @@
           <article class="card">
             <h3>⚕️ Division Médicale</h3>
             <p class="eyebrow">Centre Médical Rumsteck</p>
-            <p>Au cœur de chaque sauvetage, la Division Médicale incarne la compassion et la rigueur. Interventions en zones de guerre, postes contaminés, crashs de vaisseaux ou sur planètes inhospitalières : dotée d’unités mobiles de soins avancés, d’une flotte dédiée et de protocoles d’intervention tactique, elle sauve des vies sans perdre son sang-froid.</p>
-            <p>Au-delà du secours, elle mène des recherches biomédicales, analyses de terrain et évaluations d’environnements toxiques. <em>Leur mantra :</em> « On ne laisse jamais un taré derrière. Sauf s’il l’a vraiment cherché. »</p>
+            <p>Au cœur de chaque sauvetage, la Division Médicale incarne la compassion et la rigueur…</p>
           </article>
 
           <article class="card">
             <h3>💪 Division Industrielle</h3>
             <p class="eyebrow">Bacon Industries</p>
-            <p>Pilier logistique et économique, la Division Industrielle gère extraction, transformation et mise en circulation des ressources. Capable d’opérations massives d’exploitation minière, d’optimiser des chaînes de raffinage et de négocier des contrats rentables, elle est dotée d’une flotte spécialisée (Mole, Reclaimer, Hull Series) pour fonctionner en autonomie.</p>
-            <p>Elle fabrique des composants, recycle des matériaux et assure le soutien logistique interdivisions. <em>Devise :</em> « Si tu veux la guerre, il te faudra d’abord notre carburant. »</p>
+            <p>Pilier logistique et économique…</p>
           </article>
 
           <article class="card">
             <h3>🌪️ Division Militaire</h3>
             <p class="eyebrow">Beef Jerky Mercenary</p>
-            <p>Bras armé de G.I.G.O.T, la Division Militaire incarne puissance, réactivité et tactique. Tireurs d’élite, pilotes de chasse, commandos et spécialistes du combat spatial/planétaire alternent infiltration discrète et assaut orbital. Équipement optimisé : armures lourdes, déploiements de Nova/Ballista, chasseurs pour la couverture aérienne.</p>
-            <p>Souvent en coopération avec le Renseignement et la Logistique, elle frappe vite, fort, et sans se faire remarquer – sauf si c’est le but. <em>Mantra :</em> « On discute après, s’il reste quelqu’un. »</p>
+            <p>Bras armé de G.I.G.O.T…</p>
           </article>
         </div>
+      </div>
+    </section>
+
+    <!-- >>> SECTION FONCTIONNEMENT (ancre réparée) -->
+    <section id="fonctionnement" class="section">
+      <div class="container">
+        <h2>Fonctionnement</h2>
+        <p>Hiérarchie, règles internes, culture… (contenu à compléter comme tu veux).</p>
       </div>
     </section>
 
@@ -134,96 +139,6 @@
     <section class="section" data-protected>
       <div class="container">
         <h2>Espace membres</h2>
-
-        <!-- Panneau CONTROLES inline (mouvement + filtres) -->
-        <section id="inv-controls" class="section">
-          <div class="container">
-            <div class="toolbar">
-              <h3 style="margin:0;">Gestion d’inventaire</h3>
-              <div id="inv-summary" class="summary"></div>
-            </div>
-
-            <!-- Formulaire Mouvement -->
-            <form id="form-mvt" autocomplete="off" class="card">
-              <h4 style="margin-top:0;">Mouvement de stock</h4>
-
-              <div class="seg">
-                <label><input type="radio" name="dir" value="in" checked> Entrée</label>
-                <label><input type="radio" name="dir" value="out"> Sortie</label>
-              </div>
-
-              <div class="grid-two">
-                <label>Type
-                  <input id="mvt-type" list="dl-type" placeholder="Ex: Médical" required>
-                  <datalist id="dl-type"></datalist>
-                  <small id="badge-type" class="badge"></small>
-                </label>
-
-                <label>Item
-                  <input id="mvt-name" list="dl-name" placeholder="Ex: MedPen" required>
-                  <datalist id="dl-name"></datalist>
-                  <small id="badge-name" class="badge"></small>
-                </label>
-              </div>
-
-              <div class="grid-two">
-                <label>Lieu
-                  <input id="mvt-location" list="dl-location" placeholder="Ex: Area18">
-                  <datalist id="dl-location"></datalist>
-                  <small id="badge-location" class="badge"></small>
-                </label>
-
-                <label>Possesseur
-                  <input id="mvt-owner" list="dl-owner" placeholder="Ex: Garde Tactique">
-                  <datalist id="dl-owner"></datalist>
-                  <small id="badge-owner" class="badge"></small>
-                </label>
-              </div>
-
-              <div class="grid-two">
-                <label>Quantité
-                  <input id="mvt-qty" type="number" min="1" step="1" value="1" required>
-                </label>
-                <label>Prix unitaire (optionnel)
-                  <input id="mvt-unit" type="number" min="0" step="0.01" placeholder="0.00">
-                </label>
-              </div>
-
-              <div class="actions">
-                <button type="submit" class="btn btn-primary">Valider</button>
-                <button type="button" id="mvt-reset" class="btn btn-ghost">Réinitialiser</button>
-                <div id="mvt-debug" class="debug" hidden></div>
-              </div>
-            </form>
-
-            <!-- Filtres inline -->
-            <form id="form-filters" class="card" style="margin-top:12px;">
-              <h4 style="margin-top:0;">Filtres</h4>
-              <div class="grid-two">
-                <label>Type
-                  <select id="flt-type" multiple></select>
-                </label>
-                <label>Item
-                  <select id="flt-name" multiple></select>
-                </label>
-              </div>
-              <div class="grid-two">
-                <label>Lieu
-                  <select id="flt-location" multiple></select>
-                </label>
-                <label>Possesseur
-                  <select id="flt-owner" multiple></select>
-                </label>
-              </div>
-              <div class="actions">
-                <button type="submit" class="btn btn-primary">Appliquer</button>
-                <button type="button" id="filters-clear" class="btn btn-ghost">Effacer</button>
-              </div>
-              <div id="filters-chips" class="chips"></div>
-              <div id="flt-debug" class="debug" hidden></div>
-            </form>
-          </div>
-        </section>
 
         <!-- Inventaire -->
         <section id="inventaire" class="section">
@@ -253,28 +168,30 @@
             <!-- Pagination -->
             <div id="pagination"></div>
 
-            <!-- Bouton ajout (Option A : visible pour tous les membres) -->
+            <!-- Bouton ajout -->
             <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
           </div>
         </section>
-
-        <!-- Modal (ajout / édition) -->
-        <div id="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#12192b; padding:20px; border-radius:8px; z-index:1000;">
-          <h3 id="modal-title">Nouvel item</h3>
-          <form id="form-item">
-            <input type="hidden" id="item-id" />
-            <input type="text" id="item-type" placeholder="Type" required /><br/>
-            <input type="text" id="item-name" placeholder="Item" required /><br/>
-            <input type="text" id="item-location" placeholder="Lieu" /><br/>
-            <input type="text" id="item-owner" placeholder="Possesseur" /><br/>
-            <input type="number" id="item-unit_price" placeholder="Prix unitaire" step="0.01" /><br/>
-            <input type="number" id="item-qty" placeholder="Quantité" /><br/>
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
-            <button type="button" id="btn-cancel" class="btn btn-ghost">Annuler</button>
-          </form>
-        </div>
       </div>
     </section>
+
+    <!-- Modal (ajout / édition) — positionné hors des sections pour éviter tout conflit -->
+    <div id="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#12192b; padding:20px; border-radius:18px; z-index:1000; border:1px solid #1e2a42; box-shadow:0 10px 30px rgba(0,0,0,.35); width:min(560px, 92vw);">
+      <h3 id="modal-title">Nouvel item</h3>
+      <form id="form-item">
+        <input type="hidden" id="item-id" />
+        <input type="text" id="item-type" placeholder="Type" required /><br/>
+        <input type="text" id="item-name" placeholder="Item" required /><br/>
+        <input type="text" id="item-location" placeholder="Lieu" /><br/>
+        <input type="text" id="item-owner" placeholder="Possesseur" /><br/>
+        <input type="number" id="item-unit_price" placeholder="Prix unitaire" step="0.01" /><br/>
+        <input type="number" id="item-qty" placeholder="Quantité" /><br/>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button type="button" id="btn-cancel" class="btn btn-ghost">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
 
     <!-- visible uniquement si rôle staff -->
     <section class="section" data-staff>
@@ -287,7 +204,7 @@
     <section id="recrutement" class="section section-accent">
       <div class="container">
         <h2>Recrutement</h2>
-        <p>Envie de rejoindre une équipe « tarée, mais opérationnelle » ? Dis-nous qui tu es, ta division de cœur, et ce que tu as envie d’apporter. On discutera… s’il reste quelqu’un.</p>
+        <p>Envie de rejoindre une équipe « tarée, mais opérationnelle » ?</p>
         <div class="cta">
           <a class="btn btn-primary" href="https://discord.gg/krV7cMn2Nj" target="_blank" rel="noopener noreferrer">Discord</a>
           <a class="btn btn-primary" href="https://robertsspaceindustries.com/orgs/RBB" target="_blank" rel="noopener noreferrer">Spectrum</a>
