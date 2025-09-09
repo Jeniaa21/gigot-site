@@ -234,6 +234,7 @@ function openModal(title, item = null) {
   document.getElementById("item-unit_price").value = item?.unit_price ?? "";
   document.getElementById("item-qty").value = item?.qty ?? "";
 
+  await loadDatalists();
   modal.style.display = "block";
 }
 
@@ -385,3 +386,31 @@ document.addEventListener("gigot-can-access", (e) => {
   if (e.detail === true) fetchItems();
   else clearInventoryUI();
 });
+
+// Charger les valeurs distinctes pour autocomplete
+async function loadDatalists() {
+  const fields = ["type", "name", "location", "owner"];
+
+  for (const f of fields) {
+    const { data, error } = await supabase
+      .from("items")
+      .select(f, { count: "exact" })
+      .not(f, "is", null);
+
+    if (error) {
+      console.error("[Inventaire] Erreur datalist:", f, error);
+      continue;
+    }
+
+    const values = [...new Set(data.map(row => row[f]?.trim()).filter(Boolean))].sort();
+    const dl = document.getElementById("dl-" + (f === "name" ? "names" : f + "s"));
+    if (dl) {
+      dl.innerHTML = "";
+      values.forEach(val => {
+        const opt = document.createElement("option");
+        opt.value = val;
+        dl.appendChild(opt);
+      });
+    }
+  }
+}
