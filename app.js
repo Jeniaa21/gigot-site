@@ -1,4 +1,4 @@
-// === GIGOT – app.js (prod fixes) ===
+// === GIGOT – app.js (prod fixes final) ===
 const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 const REDIRECT_URL = "https://jeniaa21.github.io/gigot-site/";
@@ -19,14 +19,12 @@ function setYear() {
   const y = document.getElementById("year");
   if (y) y.textContent = new Date().getFullYear();
 }
-
 function setAuthButtons(isLoggedIn) {
   const btnLogin = document.getElementById("btn-login");
   const btnLogout = document.getElementById("btn-logout");
   if (btnLogin) btnLogin.style.display = isLoggedIn ? "none" : "inline-flex";
   if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
 }
-
 function updateAccessClasses(flags) {
   const root = document.documentElement;
   if (flags?.in_guild && (flags.hasBasic || flags.hasStaff)) {
@@ -61,7 +59,6 @@ async function syncDiscordRoles() {
     const data = await res.json();
     if (!res.ok) {
       console.warn("[GIGOT] Sync roles KO:", data);
-      // même si KO, on garde la session utilisateur (compte)
       updateAccessClasses({ in_guild: false });
       return;
     }
@@ -120,7 +117,7 @@ function clearInventoryUI() {
 }
 
 async function fetchItems() {
-  // chargé uniquement si espace accessible
+  // Charger uniquement si l’espace est visible/autorisé
   if (!document.documentElement.classList.contains("can-access")) return;
 
   const { data, error } = await supabase
@@ -134,6 +131,7 @@ async function fetchItems() {
     return;
   }
 
+  // Assure valeur_totale si non stockée côté DB
   items = (data || []).map(it => ({
     ...it,
     valeur_totale: it.valeur_totale ?? (Number(it.unit_price || 0) * Number(it.qty || 0))
@@ -236,12 +234,10 @@ function openModal(title, item = null) {
 
   modal.style.display = "block";
 }
-
 function closeModal() {
   const modal = document.getElementById("modal");
   if (modal) modal.style.display = "none";
 }
-
 function openAddModal() { openModal("Nouvel item"); }
 function openEditModal(it) { openModal("Modifier item", it); }
 
@@ -257,11 +253,16 @@ async function saveItem(e) {
     unit_price: parseFloat(document.getElementById("item-unit_price").value || "0") || 0,
     qty: parseInt(document.getElementById("item-qty").value || "0", 10) || 0
   };
+  payload.valeur_totale = Number(payload.unit_price) * Number(payload.qty);
 
   try {
     let res;
-    if (id) res = await supabase.from("items").update(payload).eq("id", id).select();
-    else    res = await supabase.from("items").insert(payload).select();
+    if (id) {
+      // update + .select() pour forcer la réponse (et détecter erreurs RLS)
+      res = await supabase.from("items").update(payload).eq("id", id).select();
+    } else {
+      res = await supabase.from("items").insert(payload).select();
+    }
 
     if (res.error) {
       console.error("[Inventaire] save error:", res.error);
