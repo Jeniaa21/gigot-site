@@ -363,7 +363,6 @@ body::after{
   background: var(--paper);
   border-color: var(--paper);
 }
-
 /* Petite amélioration mobile */
 @media (max-width: 640px){
   .carousel__btn{ width:38px; height:38px; }
