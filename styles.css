@@ -321,14 +321,13 @@ body::after{
 .carousel__slide{
   min-width: 100%;
   position: relative;
-  aspect-ratio: 16/9;         /* s'adapte en responsive */
+  aspect-ratio: 16/9;
   background:#1a140a;
 }
 
 .carousel__slide img{
   width: 100%; height: 100%;
-  object-fit: cover;
-  display:block;
+  object-fit: cover; display:block;
   filter: contrast(1.02) saturate(.9);
 }
 
@@ -337,7 +336,7 @@ body::after{
   position:absolute; top:50%; transform: translateY(-50%);
   z-index: 2;
   background: rgba(255,235,190,.10);
-  color: var(--paper);
+  color: #f3e4bf;
   border:1px solid rgba(255,235,190,.25);
   width:44px; height:44px; border-radius: 999px;
   display:grid; place-items:center;
@@ -353,20 +352,17 @@ body::after{
   position:absolute; left:0; right:0; bottom:12px;
   display:flex; gap:8px; justify-content:center; z-index:2;
 }
-
 .carousel__dots button{
   width:10px; height:10px; border-radius:999px;
   border:1px solid rgba(255,235,190,.6);
   background: rgba(255,235,190,.10);
   cursor:pointer;
 }
-
 .carousel__dots button[aria-selected="true"]{
-  background: var(--paper);
-  border-color: var(--paper);
+  background: #f3e4bf;
+  border-color: #f3e4bf;
 }
 
-/* Petite amélioration mobile */
 @media (max-width: 640px){
   .carousel__btn{ width:38px; height:38px; }
 }
