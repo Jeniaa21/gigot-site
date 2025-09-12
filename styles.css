@@ -353,16 +353,19 @@ body::after{
   position:absolute; left:0; right:0; bottom:12px;
   display:flex; gap:8px; justify-content:center; z-index:2;
 }
+
 .carousel__dots button{
   width:10px; height:10px; border-radius:999px;
   border:1px solid rgba(255,235,190,.6);
   background: rgba(255,235,190,.10);
   cursor:pointer;
 }
+
 .carousel__dots button[aria-selected="true"]{
   background: var(--paper);
   border-color: var(--paper);
 }
+
 /* Petite amélioration mobile */
 @media (max-width: 640px){
   .carousel__btn{ width:38px; height:38px; }
