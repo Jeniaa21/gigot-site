@@ -467,3 +467,100 @@ async function loadColumnToDatalist(col, dlId) {
 
   console.debug(`[Inventaire] datalist ${dlId}:`, values.length, "valeurs");
 }
+// ===== Carousel G.I.G.O.T =====
+(function initCarousel(){
+  const root = document.querySelector(".carousel");
+  if (!root) return;
+
+  const viewport = root.querySelector(".carousel__viewport");
+  const slides   = Array.from(root.querySelectorAll(".carousel__slide"));
+  const btnPrev  = root.querySelector(".carousel__btn--prev");
+  const btnNext  = root.querySelector(".carousel__btn--next");
+  const dotsWrap = root.querySelector(".carousel__dots");
+
+  let index = 0;
+  let autoTimer = null;
+  const AUTO_MS = 4500;       // vitesse autoplay
+  const SWIPE_MIN = 30;       // px
+
+  // Dots
+  const dots = slides.map((_, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role","tab");
+    b.setAttribute("aria-label", `Aller à l'image ${i+1}`);
+    b.addEventListener("click", () => goTo(i, true));
+    dotsWrap.appendChild(b);
+    return b;
+  });
+
+  function update(){
+    viewport.style.transform = `translateX(${-index * 100}%)`;
+    dots.forEach((d, i) => d.setAttribute("aria-selected", String(i === index)));
+  }
+
+  function goTo(i, user=false){
+    index = (i + slides.length) % slides.length;
+    update();
+    if (user) restartAuto();
+  }
+
+  function next(user=false){ goTo(index+1, user); }
+  function prev(user=false){ goTo(index-1, user); }
+
+  // Autoplay (pause au survol)
+  function startAuto(){
+    stopAuto();
+    autoTimer = setInterval(next, AUTO_MS);
+  }
+  function stopAuto(){
+    if (autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+  }
+  function restartAuto(){ stopAuto(); startAuto(); }
+
+  root.addEventListener("mouseenter", stopAuto);
+  root.addEventListener("mouseleave", startAuto);
+
+  // Clavier
+  root.tabIndex = 0;
+  root.addEventListener("keydown", (e)=>{
+    if (e.key === "ArrowRight") next(true);
+    if (e.key === "ArrowLeft")  prev(true);
+  });
+
+  // Souris / Touch (swipe)
+  let startX = 0, dx = 0, dragging = false;
+
+  const onStart = (x)=>{ startX = x; dx = 0; dragging = true; stopAuto(); };
+  const onMove  = (x)=>{ if (!dragging) return; dx = x - startX; };
+  const onEnd   = ()=>{
+    if (!dragging) return;
+    dragging = false;
+    if (Math.abs(dx) > SWIPE_MIN){
+      if (dx < 0) next(true); else prev(true);
+    } else {
+      startAuto();
+    }
+  };
+
+  // Touch
+  root.addEventListener("touchstart",(e)=> onStart(e.touches[0].clientX), {passive:true});
+  root.addEventListener("touchmove", (e)=> onMove(e.touches[0].clientX),  {passive:true});
+  root.addEventListener("touchend",  onEnd);
+
+  // Mouse (optionnel)
+  root.addEventListener("mousedown",(e)=> onStart(e.clientX));
+  window.addEventListener("mousemove",(e)=> onMove(e.clientX));
+  window.addEventListener("mouseup", onEnd);
+
+  // Boutons
+  btnNext.addEventListener("click", ()=> next(true));
+  btnPrev.addEventListener("click", ()=> prev(true));
+
+  // Init
+  update();
+  startAuto();
+
+  // Accessibilité: annoncer le slide courant à l’écran
+  viewport.setAttribute("aria-live","polite");
+})();
