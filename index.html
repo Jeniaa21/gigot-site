@@ -29,7 +29,7 @@
 
   <!-- Supabase UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <!-- JS applicatif -->
+  <!-- Ton JS applicatif (assure-toi d’avoir la dernière version avec l’autocomplete) -->
   <script src="app.js?v=inv-autocomplete" defer></script>
 </head>
 
@@ -45,7 +45,7 @@
           <li><a href="#histoire">Histoire</a></li>
           <li><a href="#divisions">Divisions</a></li>
           <li><a href="#fonctionnement">Fonctionnement</a></li>
-          <li><a href="membres.html">Espace membres</a></li>
+          <li><a href="#recrutement">Recrutement</a></li>
           <li class="nav-cta">
             <div class="cta">
               <button class="btn btn-primary" id="btn-login">Se connecter avec Discord</button>
@@ -136,6 +136,7 @@
 
         <div class="carousel" aria-roledescription="carousel" aria-label="Galerie G.I.G.O.T">
           <div class="carousel__viewport" aria-live="polite">
+            <!-- Remplace les src par tes fichiers dans /img/ -->
             <div class="carousel__slide">
               <img src="img-Galerie/ScreenShot-2025-07-12_22-06-17-0FC.jpg" alt="sniper">
             </div>
@@ -191,7 +192,84 @@
       </div>
     </section>
 
-    <!-- La partie Espace membres a été déplacée dans membres.html -->
+    <!-- visible uniquement si l’utilisateur est dans la guilde + a un rôle autorisé -->
+    <section class="section" data-protected>
+      <div class="container">
+        <h2>Espace membres</h2>
+
+        <!-- Inventaire -->
+        <section id="inventaire" class="section">
+          <div class="container">
+            <h2>Inventaire</h2>
+
+            <!-- Recherche -->
+            <input type="text" id="search" placeholder="Rechercher..." />
+
+            <!-- Tableau -->
+            <table id="inv-table">
+              <thead>
+                <tr>
+                  <th data-col="type">Type</th>
+                  <th data-col="name">Item</th>
+                  <th data-col="location">Lieu</th>
+                  <th data-col="owner">Possesseur</th>
+                  <th data-col="unit_price">Prix unitaire</th>
+                  <th data-col="qty">Quantité</th>
+                  <th data-col="valeur_totale">Valeur totale</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inv-body"></tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div id="pagination"></div>
+
+            <!-- Bouton ajout -->
+            <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
+          </div>
+        </section>
+
+        <!-- Modal (ajout / édition) -->
+        <div id="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#12192b; padding:20px; border-radius:8px; z-index:1000; max-width:520px; width:calc(100% - 32px);">
+          <h3 id="modal-title">Nouvel item</h3>
+          <form id="form-item">
+            <input type="hidden" id="item-id" />
+
+            <!-- AUTOCOMPLETE : Type -->
+            <input type="text" id="item-type" placeholder="Type" list="dl-types" required /><br/>
+            <datalist id="dl-types"></datalist>
+
+            <!-- AUTOCOMPLETE : Item / Nom -->
+            <input type="text" id="item-name" placeholder="Item" list="dl-names" required /><br/>
+            <datalist id="dl-names"></datalist>
+
+            <!-- AUTOCOMPLETE : Lieu -->
+            <input type="text" id="item-location" placeholder="Lieu" list="dl-locations" /><br/>
+            <datalist id="dl-locations"></datalist>
+
+            <!-- AUTOCOMPLETE : Possesseur -->
+            <input type="text" id="item-owner" placeholder="Possesseur" list="dl-owners" /><br/>
+            <datalist id="dl-owners"></datalist>
+
+            <!-- Prix / Quantité -->
+            <input type="number" id="item-unit_price" placeholder="Prix unitaire" step="1" /><br/>
+            <input type="number" id="item-qty" placeholder="Quantité" /><br/>
+
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="button" id="btn-cancel" class="btn btn-ghost">Annuler</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- visible uniquement si rôle staff -->
+    <section class="section" data-staff>
+      <div class="container">
+        <h2>Staff</h2>
+        <p>Outils et infos pour l’équipe staff.</p>
+      </div>
+    </section>
 
     <section id="recrutement" class="section section-accent">
       <div class="container">
