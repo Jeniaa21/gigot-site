@@ -340,6 +340,23 @@ body::after{
   text-align:left; cursor:pointer; 
   letter-spacing:.05em;
 }
+#inv-table td:last-child {
+  text-align: center;
+  vertical-align: middle;
+}
+
+#inv-table td:last-child {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;   /* espace constant entre Modifier / Supprimer */
+}
+
+#inv-table td:last-child button {
+  margin: 0;               /* supprime l’ancien margin */
+  padding: 6px 10px;       /* taille homogène */
+  line-height: 1;          /* supprime les décalages verticaux */
+}
 #inv-table td:nth-child(5),
 #inv-table td:nth-child(6),
 #inv-table td:nth-child(7){ text-align:right; }
