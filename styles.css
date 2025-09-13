@@ -351,7 +351,8 @@ body::after{
   border:1px solid rgba(255,235,190,.25);
   color: var(--paper); 
   cursor:pointer; 
-  padding:4px 8px; 
+  padding:4px 8px;
+  margin:10px;
   border-radius:8px;
 }
 #inv-table button:hover{ 
