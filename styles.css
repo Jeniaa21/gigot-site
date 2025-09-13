@@ -379,7 +379,8 @@ body::after{
 #pagination button:disabled{ 
   background:#2a2112; 
   opacity:.6; 
-  cursor:not-allowed; }
+  cursor:not-allowed; 
+}
 
 /* ------------------ Modal Inventaire ------------------ */
 #modal{
@@ -468,6 +469,7 @@ body::after{
   .cta{ gap: 10px; }
   #inv-table{ font-size: .88rem; }
 }
+
 /* === Carousel (thème sepia) ===================================== */
 .carousel{
   position: relative;
@@ -477,20 +479,17 @@ body::after{
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-
 .carousel__viewport{
   display:flex;
   will-change: transform;
   transition: transform .45s ease;
 }
-
 .carousel__slide{
   min-width: 100%;
   position: relative;
   aspect-ratio: 16/9;
   background:#1a140a;
 }
-
 .carousel__slide img{
   width: 100%; 
   height: 100%;
@@ -498,7 +497,6 @@ body::after{
   display:block;
   filter: contrast(1.02) saturate(.9);
 }
-
 /* Flèches */
 .carousel__btn{
   position:absolute; 
@@ -519,28 +517,17 @@ body::after{
 .carousel__btn:hover{ 
   background: rgba(255,235,190,.18); 
 }
-.carousel__btn--prev{ 
-  left: 12px; 
-}
-.carousel__btn--next{
-  right: 12px; 
-}
-
+.carousel__btn--prev{ left: 12px; }
+.carousel__btn--next{ right: 12px; }
 /* Pastilles */
 .carousel__dots{
   position:absolute; 
-  left:0; 
-  right:0; 
-  bottom:12px;
-  display:flex; 
-  gap:8px; 
-  justify-content:center; 
+  left:0; right:0; bottom:12px;
+  display:flex; gap:8px; justify-content:center; 
   z-index:2;
 }
 .carousel__dots button{
-  width:10px; 
-  height:10px; 
-  border-radius:999px;
+  width:10px; height:10px; border-radius:999px;
   border:1px solid rgba(255,235,190,.6);
   background: rgba(255,235,190,.10);
   cursor:pointer;
@@ -549,10 +536,6 @@ body::after{
   background: #f3e4bf;
   border-color: #f3e4bf;
 }
-
 @media (max-width: 640px){
-  .carousel__btn{ 
-    width:38px; 
-    height:38px; 
-  }
+  .carousel__btn{ width:38px; height:38px; }
 }
