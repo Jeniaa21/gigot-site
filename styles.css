@@ -4,7 +4,11 @@
    --------------------------------------------------------- */
 
 /* Reset léger */
-* { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 html, body { margin: 0; padding: 0; }
 
 /* ------------------ Variables ------------------ */
@@ -263,6 +267,7 @@ body::after{
   padding: clamp(16px, 2.5vw, 24px);
   box-shadow: var(--shadow);
   color: var(--paper);
+  margin: 10px;
 }
 .card h3{
   margin:0 0 6px; 
