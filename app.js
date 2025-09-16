@@ -109,7 +109,7 @@ async function logout() {
     const base = (typeof getRepoBaseForGithubPages === "function") ? getRepoBaseForGithubPages() : "";
     window.location.replace(`${base}/index.html`);
   }
-} ;
+} 
 
 // ————— Inventaire —————
 console.log("[GIGOT] Inventaire JS chargé");
@@ -786,16 +786,20 @@ function initCarousel(){
 window.addEventListener('DOMContentLoaded', initCarousel);
 
 // ——— Cashbox helpers ———
-function euroFromCents(cents) {
-  if (typeof cents !== "number") return "—";
-  return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+// === Conversion / formatage aUEC ===
+function auecFromValue(val) {
+  if (val == null || isNaN(val)) return "—";
+  // On s'assure que c'est bien un entier
+  const n = Math.round(Number(val));
+  return n.toLocaleString("fr-FR") + " aUEC";
 }
-function centsFromEuroString(str) {
-  const cleaned = String(str).replace(/[^\d,.-]/g, "").replace(",", ".");
+
+function valueFromAuecString(str) {
+  // On enlève tout sauf les chiffres
+  const cleaned = String(str).replace(/[^\d]/g, "");
   const n = Number(cleaned);
   if (!Number.isFinite(n)) return null;
-  const cents = Math.round(n * 100);
-  return cents < 0 ? null : cents;
+  return Math.round(n);
 }
 function fmtDateISOToFR(d) {
   if (!d) return "—";
@@ -908,7 +912,7 @@ async function refreshCashbox() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${row.giver_name ?? ""}</td>
-      <td>${euroFromCents(row.amount_cents)}</td>
+      <td>${auecFromValue(row.amount_cents)}</td>
       <td>${fmtDateISOToFR(row.date)}</td>
       <td>${row.notes ? `<span class="muted">${escapeHtml(row.notes)}</span>` : ""}</td>
       <td data-staff>
@@ -927,7 +931,7 @@ async function refreshCashbox() {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${row.reason ?? ""}</td>
-      <td>${euroFromCents(row.amount_cents)}</td>
+      <td>${auecFromValue(row.amount_cents)}</td>
       <td>${fmtDateISOToFR(row.date)}</td>
       <td>${row.notes ? linkify(escapeHtml(row.notes)) : ""}</td>
       <td data-staff>
@@ -943,7 +947,7 @@ async function refreshCashbox() {
   // Solde
   const totalDon = (dons || []).reduce((s, r) => s + (r.amount_cents || 0), 0);
   const totalDep = (deps || []).reduce((s, r) => s + (r.amount_cents || 0), 0);
-  balanceEl.textContent = euroFromCents(totalDon - totalDep);
+  balanceEl.textContent = auecFromValue(totalDon - totalDep);
 
   applyStaffVisibility(); // masque/affiche actions staff
 }
@@ -985,7 +989,7 @@ function wireCashboxActions() {
         { id: "notes", label: "Notes", type: "text", placeholder: "(optionnel)" },
       ],
       onSubmit: async (fd) => {
-        const amount_cents = centsFromEuroString(fd.get("amount"));
+        const amount_cents = valueFromAuecString(fd.get("amount"));
         if (amount_cents == null) { alert("Montant invalide"); return; }
         const payload = {
           giver_name: fd.get("giver_name"),
@@ -1012,7 +1016,7 @@ function wireCashboxActions() {
         { id: "notes", label: "Justif / Notes (URL possible)", type: "text" },
       ],
       onSubmit: async (fd) => {
-        const amount_cents = centsFromEuroString(fd.get("amount"));
+        const amount_cents = valueFromAuecString(fd.get("amount"));
         if (amount_cents == null) { alert("Montant invalide"); return; }
         const payload = {
           reason: fd.get("reason"),
@@ -1059,7 +1063,7 @@ function wireCashboxActions() {
             { id: "notes", label: "Notes", type: "text", value: data.notes || "" },
           ],
           onSubmit: async (fd) => {
-            const amount_cents = centsFromEuroString(fd.get("amount"));
+            const amount_cents = valueFromAuecString(fd.get("amount"));
             if (amount_cents == null) { alert("Montant invalide"); return; }
             const patch = {
               giver_name: fd.get("giver_name"),
@@ -1083,7 +1087,7 @@ function wireCashboxActions() {
             { id: "notes", label: "Justif / Notes", type: "text", value: data.notes || "" },
           ],
           onSubmit: async (fd) => {
-            const amount_cents = centsFromEuroString(fd.get("amount"));
+            const amount_cents = valueFromAuecString(fd.get("amount"));
             if (amount_cents == null) { alert("Montant invalide"); return; }
             const patch = {
               reason: fd.get("reason"),
