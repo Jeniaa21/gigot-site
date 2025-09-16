@@ -102,7 +102,7 @@ async function logout() {
   updateAccessClasses({ in_guild: false });
     refreshMembersCTA();
     updateMemberAccessButton();
-  clearInventoryUI();
+
   // redirection si on est sur la page membres
   const onMembersPage = document.body?.dataset?.page === "members" || /membre\.html$/i.test(location.pathname);
   if (onMembersPage) {
@@ -110,8 +110,6 @@ async function logout() {
     window.location.replace(`${base}/index.html`);
   }
 } ;
-  clearInventoryUI();
-
 
 // ————— Inventaire —————
 console.log("[GIGOT] Inventaire JS chargé");
