@@ -419,6 +419,8 @@ document.addEventListener("gigot-can-access", (e) => {
   updateMemberAccessButton();
   if (e.detail === true) fetchItems();
   else clearInventoryUI();
+  refreshCashbox();
+  wireCashboxActions();
 });
 
 // Charger les valeurs distinctes pour autocomplete
@@ -784,3 +786,323 @@ function initCarousel(){
 
 // lance après le DOM (ton script est déjà "defer", mais on force pour être sûr)
 window.addEventListener('DOMContentLoaded', initCarousel);
+
+// ——— Cashbox helpers ———
+function euroFromCents(cents) {
+  if (typeof cents !== "number") return "—";
+  return (cents / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+}
+function centsFromEuroString(str) {
+  const cleaned = String(str).replace(/[^\d,.-]/g, "").replace(",", ".");
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return null;
+  const cents = Math.round(n * 100);
+  return cents < 0 ? null : cents;
+}
+function fmtDateISOToFR(d) {
+  if (!d) return "—";
+  try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; }
+}
+
+// Modal util (réutilise ton modal si tu en as déjà un)
+const cashboxModal = {
+  el: null, form: null, cancelBtn: null, onSubmit: null,
+  ensure() {
+    if (this.el) return;
+    this.el = document.getElementById("cashbox-modal");
+    this.form = document.getElementById("cashbox-form");
+    this.cancelBtn = document.getElementById("cashbox-cancel");
+    if (this.cancelBtn) this.cancelBtn.addEventListener("click", () => this.hide());
+    if (this.form) this.form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (typeof this.onSubmit === "function") this.onSubmit(new FormData(this.form));
+    });
+  },
+  show({ title, fields, onSubmit }) {
+    this.ensure();
+    document.getElementById("cashbox-modal-title").textContent = title || "Éditer";
+    const frag = document.createDocumentFragment();
+    fields.forEach(f => {
+      const wrap = document.createElement("div");
+      wrap.className = "form-row";
+      const label = document.createElement("label");
+      label.textContent = f.label;
+      label.htmlFor = f.id;
+      const input = document.createElement(f.tag || "input");
+      input.id = f.id;
+      input.name = f.name || f.id;
+      input.type = f.type || "text";
+      if (f.type === "date" && f.value) input.value = String(f.value).slice(0, 10);
+      else if (f.value != null) input.value = f.value;
+      if (f.placeholder) input.placeholder = f.placeholder;
+      if (f.required) input.required = true;
+      wrap.appendChild(label);
+      wrap.appendChild(input);
+      frag.appendChild(wrap);
+    });
+    this.form.replaceChildren(frag, this.form.querySelector(".form-actions"));
+    this.onSubmit = onSubmit;
+    this.el.hidden = false;
+    this.el.open = true;
+    document.documentElement.classList.add("modal-open");
+  },
+  hide() {
+    this.el.hidden = true;
+    this.el.open = false;
+    document.documentElement.classList.remove("modal-open");
+  }
+};
+
+// ——— Cashbox API ———
+// NOTE: tu peux remplacer ces .from(...).insert/update/delete par des RPCs edge si tu sécurises côté serveur.
+async function listDonations({ limit = 50, offset = 0 } = {}) {
+  return await supabase.from("donations")
+    .select("*", { count: "exact" })
+    .order("date", { ascending: false })
+    .range(offset, offset + limit - 1);
+}
+async function listExpenses({ limit = 50, offset = 0 } = {}) {
+  return await supabase.from("expenses")
+    .select("*", { count: "exact" })
+    .order("date", { ascending: false })
+    .range(offset, offset + limit - 1);
+}
+async function createDonation(payload) {
+  return await supabase.from("donations").insert(payload).select("*").single();
+}
+async function updateDonation(id, patch) {
+  return await supabase.from("donations").update(patch).eq("id", id).select("*").single();
+}
+async function deleteDonation(id) {
+  return await supabase.from("donations").delete().eq("id", id);
+}
+async function createExpense(payload) {
+  return await supabase.from("expenses").insert(payload).select("*").single();
+}
+async function updateExpense(id, patch) {
+  return await supabase.from("expenses").update(patch).eq("id", id).select("*").single();
+}
+async function deleteExpense(id) {
+  return await supabase.from("expenses").delete().eq("id", id);
+}
+
+// ——— Cashbox UI ———
+async function refreshCashbox() {
+  const tbodyDon = document.getElementById("donations-body");
+  const tbodyExp = document.getElementById("expenses-body");
+  const balanceEl = document.getElementById("cashbox-balance");
+  if (!tbodyDon || !tbodyExp || !balanceEl) return;
+
+  tbodyDon.innerHTML = '<tr><td colspan="5">Chargement…</td></tr>';
+  tbodyExp.innerHTML = '<tr><td colspan="5">Chargement…</td></tr>';
+
+  const [{ data: dons, error: e1 }, { data: deps, error: e2 }] = await Promise.all([
+    listDonations({ limit: 200 }),
+    listExpenses({ limit: 200 }),
+  ]);
+
+  if (e1) console.error(e1);
+  if (e2) console.error(e2);
+
+  // Dons
+  tbodyDon.innerHTML = "";
+  (dons || []).forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.giver_name ?? ""}</td>
+      <td>${euroFromCents(row.amount_cents)}</td>
+      <td>${fmtDateISOToFR(row.date)}</td>
+      <td>${row.notes ? `<span class="muted">${escapeHtml(row.notes)}</span>` : ""}</td>
+      <td data-staff>
+        <div class="table-actions">
+          <button class="btn btn-ghost btn-small" data-edit="${row.id}">Éditer</button>
+          <button class="btn btn-ghost btn-small" data-del="${row.id}">Supprimer</button>
+        </div>
+      </td>
+    `;
+    tbodyDon.appendChild(tr);
+  });
+
+  // Dépenses
+  tbodyExp.innerHTML = "";
+  (deps || []).forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.reason ?? ""}</td>
+      <td>${euroFromCents(row.amount_cents)}</td>
+      <td>${fmtDateISOToFR(row.date)}</td>
+      <td>${row.notes ? linkify(escapeHtml(row.notes)) : ""}</td>
+      <td data-staff>
+        <div class="table-actions">
+          <button class="btn btn-ghost btn-small" data-edit="${row.id}">Éditer</button>
+          <button class="btn btn-ghost btn-small" data-del="${row.id}">Supprimer</button>
+        </div>
+      </td>
+    `;
+    tbodyExp.appendChild(tr);
+  });
+
+  // Solde
+  const totalDon = (dons || []).reduce((s, r) => s + (r.amount_cents || 0), 0);
+  const totalDep = (deps || []).reduce((s, r) => s + (r.amount_cents || 0), 0);
+  balanceEl.textContent = euroFromCents(totalDon - totalDep);
+
+  applyStaffVisibility(); // masque/affiche actions staff
+}
+
+function applyStaffVisibility() {
+  const isStaff = document.documentElement.classList.contains("is-staff");
+  document.querySelectorAll("#cashbox [data-staff]").forEach(el => {
+    // ta CSS gère déjà [data-staff] -> .is-staff [data-staff]{display:inline-block}
+    // Donc rien à faire si tu veux masquer par CSS. Ici on désactive les boutons quand non-staff :
+    if (!isStaff) {
+      el.querySelectorAll("button").forEach(b => (b.disabled = true));
+    }
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+function linkify(text) {
+  return text.replace(/(https?:\/\/[^\s)]+)|((?:www\.)[^\s)]+)/g, m => {
+    const href = m.startsWith("http") ? m : `https://${m}`;
+    return `<a href="${href}" target="_blank" rel="noopener">${m}</a>`;
+  });
+}
+
+function wireCashboxActions() {
+  const addDonBtn = document.getElementById("btn-add-donation");
+  const addExpBtn = document.getElementById("btn-add-expense");
+  const isStaff = document.documentElement.classList.contains("is-staff");
+
+  if (addDonBtn) addDonBtn.addEventListener("click", () => {
+    if (!isStaff) return;
+    cashboxModal.show({
+      title: "Ajouter un don",
+      fields: [
+        { id: "giver_name", label: "Donateur·rice", required: true, placeholder: "Pseudo", type: "text" },
+        { id: "amount", label: "Montant (€)", required: true, placeholder: "12,34", type: "text" },
+        { id: "date", label: "Date", required: true, type: "date" },
+        { id: "notes", label: "Notes", type: "text", placeholder: "(optionnel)" },
+      ],
+      onSubmit: async (fd) => {
+        const amount_cents = centsFromEuroString(fd.get("amount"));
+        if (amount_cents == null) { alert("Montant invalide"); return; }
+        const payload = {
+          giver_name: fd.get("giver_name"),
+          amount_cents,
+          date: fd.get("date"),
+          notes: fd.get("notes") || null
+        };
+        const { error } = await createDonation(payload);
+        if (error) { alert("Erreur: " + error.message); return; }
+        cashboxModal.hide();
+        await refreshCashbox();
+      }
+    });
+  });
+
+  if (addExpBtn) addExpBtn.addEventListener("click", () => {
+    if (!isStaff) return;
+    cashboxModal.show({
+      title: "Ajouter une dépense",
+      fields: [
+        { id: "reason", label: "Raison / Objet", required: true, type: "text" },
+        { id: "amount", label: "Montant (€)", required: true, placeholder: "12,34", type: "text" },
+        { id: "date", label: "Date", required: true, type: "date" },
+        { id: "notes", label: "Justif / Notes (URL possible)", type: "text" },
+      ],
+      onSubmit: async (fd) => {
+        const amount_cents = centsFromEuroString(fd.get("amount"));
+        if (amount_cents == null) { alert("Montant invalide"); return; }
+        const payload = {
+          reason: fd.get("reason"),
+          amount_cents,
+          date: fd.get("date"),
+          notes: fd.get("notes") || null
+        };
+        const { error } = await createExpense(payload);
+        if (error) { alert("Erreur: " + error.message); return; }
+        cashboxModal.hide();
+        await refreshCashbox();
+      }
+    });
+  });
+
+  // Délégation pour édit/suppr
+  const onTableClick = async (e, type) => {
+    const isStaff = document.documentElement.classList.contains("is-staff");
+    if (!isStaff) return;
+    const editId = e.target?.dataset?.edit;
+    const delId  = e.target?.dataset?.del;
+    if (!editId && !delId) return;
+
+    if (delId) {
+      if (!confirm("Supprimer cette ligne ?")) return;
+      const fn = type === "don" ? deleteDonation : deleteExpense;
+      const { error } = await fn(delId);
+      if (error) { alert("Erreur: " + error.message); return; }
+      await refreshCashbox();
+    }
+    if (editId) {
+      // Fetch la ligne actuelle
+      const table = type === "don" ? "donations" : "expenses";
+      const { data, error } = await supabase.from(table).select("*").eq("id", editId).single();
+      if (error) { alert("Erreur: " + error.message); return; }
+
+      if (type === "don") {
+        cashboxModal.show({
+          title: "Éditer un don",
+          fields: [
+            { id: "giver_name", label: "Donateur·rice", required: true, type: "text", value: data.giver_name },
+            { id: "amount", label: "Montant (€)", required: true, type: "text", value: (data.amount_cents/100).toString().replace(".", ",") },
+            { id: "date", label: "Date", required: true, type: "date", value: data.date },
+            { id: "notes", label: "Notes", type: "text", value: data.notes || "" },
+          ],
+          onSubmit: async (fd) => {
+            const amount_cents = centsFromEuroString(fd.get("amount"));
+            if (amount_cents == null) { alert("Montant invalide"); return; }
+            const patch = {
+              giver_name: fd.get("giver_name"),
+              amount_cents,
+              date: fd.get("date"),
+              notes: fd.get("notes") || null
+            };
+            const { error } = await updateDonation(editId, patch);
+            if (error) { alert("Erreur: " + error.message); return; }
+            cashboxModal.hide();
+            await refreshCashbox();
+          }
+        });
+      } else {
+        cashboxModal.show({
+          title: "Éditer une dépense",
+          fields: [
+            { id: "reason", label: "Raison / Objet", required: true, type: "text", value: data.reason },
+            { id: "amount", label: "Montant (€)", required: true, type: "text", value: (data.amount_cents/100).toString().replace(".", ",") },
+            { id: "date", label: "Date", required: true, type: "date", value: data.date },
+            { id: "notes", label: "Justif / Notes", type: "text", value: data.notes || "" },
+          ],
+          onSubmit: async (fd) => {
+            const amount_cents = centsFromEuroString(fd.get("amount"));
+            if (amount_cents == null) { alert("Montant invalide"); return; }
+            const patch = {
+              reason: fd.get("reason"),
+              amount_cents,
+              date: fd.get("date"),
+              notes: fd.get("notes") || null
+            };
+            const { error } = await updateExpense(editId, patch);
+            if (error) { alert("Erreur: " + error.message); return; }
+            cashboxModal.hide();
+            await refreshCashbox();
+          }
+        });
+      }
+    }
+  };
+
+  document.getElementById("donations-table")?.addEventListener("click", (e) => onTableClick(e, "don"));
+  document.getElementById("expenses-table")?.addEventListener("click", (e) => onTableClick(e, "dep"));
+}

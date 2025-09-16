@@ -102,6 +102,85 @@
             <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
           </div>
         </section>
+        <!-- CAISSE NOIRE -->
+        <section id="cashbox" class="section">
+          <div class="container">
+            <h2>Caisse noire</h2>
+
+            <div id="cashbox-summary" class="card">
+              <div class="row">
+                <strong>Solde actuel :</strong>
+                <span id="cashbox-balance" aria-live="polite">— €</span>
+              </div>
+              <p class="muted">Somme des dons moins les dépenses. Visible par tous les membres.</p>
+            </div>
+
+            <!-- Dons -->
+            <article class="card">
+              <header class="card-head">
+                <h3>Suivi des dons</h3>
+                <div class="actions" data-staff>
+                  <button id="btn-add-donation" class="btn btn-primary">+ Ajouter un don</button>
+                </div>
+              </header>
+              <div class="table-wrap">
+                <table id="donations-table" class="table">
+                  <thead>
+                    <tr>
+                      <th>Donateur·rice</th>
+                      <th>Montant (€)</th>
+                      <th>Date</th>
+                      <th>Notes</th>
+                      <th data-staff>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="donations-body"></tbody>
+                </table>
+              </div>
+              <div class="pagination" id="donations-pager"></div>
+            </article>
+
+            <!-- Dépenses -->
+            <article class="card">
+              <header class="card-head">
+                <h3>Historique des mouvements (dépenses)</h3>
+                <div class="actions" data-staff>
+                  <button id="btn-add-expense" class="btn btn-primary">+ Ajouter une dépense</button>
+                </div>
+              </header>
+              <div class="table-wrap">
+                <table id="expenses-table" class="table">
+                  <thead>
+                    <tr>
+                      <th>Raison / Objet</th>
+                      <th>Montant (€)</th>
+                      <th>Date</th>
+                      <th>Justif / Notes</th>
+                      <th data-staff>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="expenses-body"></tbody>
+                </table>
+              </div>
+              <div class="pagination" id="expenses-pager"></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Modals (réutilise le même modal système que l’inventaire si tu veux) -->
+        <div id="cashbox-modal" class="modal" hidden>
+          <div class="modal-dialog">
+            <h3 id="cashbox-modal-title">Ajouter</h3>
+            <form id="cashbox-form">
+              <!-- champs injectés dynamiquement -->
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                <button type="button" class="btn btn-ghost" id="cashbox-cancel">Annuler</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
 
         
 
