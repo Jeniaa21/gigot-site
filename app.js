@@ -25,6 +25,7 @@ function setAuthButtons(isLoggedIn) {
   const btnLogout = document.getElementById("btn-logout");
   if (btnLogin) btnLogin.style.display = isLoggedIn ? "none" : "inline-flex";
   if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
+  updateMemberAccessButton();
 }
 function updateAccessClasses(flags) {
 // expose flags to CTA
@@ -75,6 +76,7 @@ async function syncDiscordRoles() {
       hasStaff: !!data.hasStaff
     });
     refreshMembersCTA();
+    updateMemberAccessButton();
   } catch (err) {
     console.error("[GIGOT] Sync error:", err);
     updateAccessClasses({ in_guild: false });
@@ -99,6 +101,7 @@ async function logout() {
   setAuthButtons(false);
   updateAccessClasses({ in_guild: false });
     refreshMembersCTA();
+    updateMemberAccessButton();
   clearInventoryUI();
   // redirection si on est sur la page membres
   const onMembersPage = document.body?.dataset?.page === "members" || /membre\.html$/i.test(location.pathname);
@@ -357,6 +360,7 @@ async function deleteItem(row) {
 // ————— Wiring DOM —————
 document.addEventListener("DOMContentLoaded", async () => {
   setYear();
+  updateMemberAccessButton();
 
   // Auth buttons
   const btnLogin = document.getElementById("btn-login");
@@ -398,6 +402,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setAuthButtons(!!sess);
     await syncDiscordRoles();
   refreshMembersCTA();
+  updateMemberAccessButton();
   });
 });
 
@@ -411,6 +416,7 @@ window.logout = logout;
 // Rafraîchir l’inventaire quand accès autorisé
 document.addEventListener("gigot-can-access", (e) => {
   refreshMembersCTA();
+  updateMemberAccessButton();
   if (e.detail === true) fetchItems();
   else clearInventoryUI();
 });
@@ -538,6 +544,42 @@ function refreshMembersCTA() {
   __lastLogin = isLoggedIn;
   __lastAccess = canAccess;
 }
+// ——— Bouton Accès membres (section CTA) ———
+function updateMemberAccessButton() {
+  const btn = document.getElementById("btn-member-access");
+  const note = document.getElementById("member-access-note");
+  if (!btn || !note) return;
+
+  const isLoggedIn = !!window.__gigotSessionLoggedIn;
+  const canAccess = document.documentElement.classList.contains("can-access");
+
+  // reset listeners proprement
+  const newBtn = btn.cloneNode(true);
+  btn.replaceWith(newBtn);
+
+  if (!isLoggedIn) {
+    note.textContent = "Connecte-toi avec Discord pour vérifier ton accès.";
+    newBtn.textContent = "Se connecter avec Discord";
+    newBtn.disabled = false;
+    newBtn.className = "btn btn-primary";
+    newBtn.addEventListener("click", loginWithDiscord);
+  } else if (canAccess) {
+    note.textContent = "Accès validé. Tu peux ouvrir l’espace membres.";
+    newBtn.textContent = "Accéder à l’espace membres";
+    newBtn.disabled = false;
+    newBtn.className = "btn btn-primary";
+    newBtn.addEventListener("click", () => {
+      const base = (typeof getRepoBaseForGithubPages === "function") ? getRepoBaseForGithubPages() : "";
+      window.location.href = `${base}/membre.html`;
+    });
+  } else {
+    note.textContent = "Accès réservé aux membres reconnus sur le Discord.";
+    newBtn.textContent = "Accès restreint";
+    newBtn.disabled = true;
+    newBtn.className = "btn btn-ghost";
+  }
+}
+
 
 // ===== Carousel G.I.G.O.T =====
 (function initCarousel(){
