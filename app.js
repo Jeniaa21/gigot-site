@@ -786,27 +786,26 @@ function initCarousel(){
 window.addEventListener('DOMContentLoaded', initCarousel);
 
 // ——— Cashbox helpers ———
-// === Conversion / formatage aUEC ===
+// === Conversion / formatage aUEC (entiers, sans décimales) ===
 function auecFromValue(val) {
   if (val == null || isNaN(val)) return "—";
-  // On s'assure que c'est bien un entier
-  const n = Math.round(Number(val));
-  return n.toLocaleString("fr-FR") + " aUEC";
+  const n = Math.round(Number(val));           // entier
+  return `${n.toLocaleString("fr-FR")} aUEC`;  // ex: "12 345 aUEC"
 }
-
 function valueFromAuecString(str) {
-  // On enlève tout sauf les chiffres
+  // n’accepte que des chiffres (on ignore espaces, "aUEC", etc.)
   const cleaned = String(str).replace(/[^\d]/g, "");
   const n = Number(cleaned);
   if (!Number.isFinite(n)) return null;
-  return Math.round(n);
+  return Math.round(n); // entier
 }
+
 function fmtDateISOToFR(d) {
   if (!d) return "—";
   try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; }
 }
 
-// Modal util (réutilise ton modal si tu en as déjà un)
+// ---------- Modal util ----------
 const cashboxModal = {
   el: null, form: null, cancelBtn: null, onSubmit: null,
   ensure() {
@@ -855,8 +854,7 @@ const cashboxModal = {
   }
 };
 
-// ——— Cashbox API ———
-// NOTE: tu peux remplacer ces .from(...).insert/update/delete par des RPCs edge si tu sécurises côté serveur.
+// ---------- API Supabase ----------
 async function listDonations({ limit = 50, offset = 0 } = {}) {
   return await supabase.from("donations")
     .select("*", { count: "exact" })
@@ -888,7 +886,7 @@ async function deleteExpense(id) {
   return await supabase.from("expenses").delete().eq("id", id);
 }
 
-// ——— Cashbox UI ———
+// ---------- UI ----------
 async function refreshCashbox() {
   const tbodyDon = document.getElementById("donations-body");
   const tbodyExp = document.getElementById("expenses-body");
@@ -902,7 +900,6 @@ async function refreshCashbox() {
     listDonations({ limit: 200 }),
     listExpenses({ limit: 200 }),
   ]);
-
   if (e1) console.error(e1);
   if (e2) console.error(e2);
 
@@ -949,14 +946,12 @@ async function refreshCashbox() {
   const totalDep = (deps || []).reduce((s, r) => s + (r.amount_cents || 0), 0);
   balanceEl.textContent = auecFromValue(totalDon - totalDep);
 
-  applyStaffVisibility(); // masque/affiche actions staff
+  applyStaffVisibility();
 }
 
 function applyStaffVisibility() {
   const isStaff = document.documentElement.classList.contains("is-staff");
   document.querySelectorAll("#cashbox [data-staff]").forEach(el => {
-    // ta CSS gère déjà [data-staff] -> .is-staff [data-staff]{display:inline-block}
-    // Donc rien à faire si tu veux masquer par CSS. Ici on désactive les boutons quand non-staff :
     if (!isStaff) {
       el.querySelectorAll("button").forEach(b => (b.disabled = true));
     }
@@ -984,12 +979,12 @@ function wireCashboxActions() {
       title: "Ajouter un don",
       fields: [
         { id: "giver_name", label: "Donateur·rice", required: true, placeholder: "Pseudo", type: "text" },
-        { id: "amount", label: "Montant (€)", required: true, placeholder: "12,34", type: "text" },
+        { id: "amount", label: "Montant (aUEC)", required: true, placeholder: "1234", type: "text" },
         { id: "date", label: "Date", required: true, type: "date" },
         { id: "notes", label: "Notes", type: "text", placeholder: "(optionnel)" },
       ],
       onSubmit: async (fd) => {
-        const amount_cents = valueFromAuecString(fd.get("amount"));
+        const amount_cents = valueFromAuecString(fd.get("amount")); // stocké en entier aUEC
         if (amount_cents == null) { alert("Montant invalide"); return; }
         const payload = {
           giver_name: fd.get("giver_name"),
@@ -1011,12 +1006,12 @@ function wireCashboxActions() {
       title: "Ajouter une dépense",
       fields: [
         { id: "reason", label: "Raison / Objet", required: true, type: "text" },
-        { id: "amount", label: "Montant (€)", required: true, placeholder: "12,34", type: "text" },
+        { id: "amount", label: "Montant (aUEC)", required: true, placeholder: "1234", type: "text" },
         { id: "date", label: "Date", required: true, type: "date" },
         { id: "notes", label: "Justif / Notes (URL possible)", type: "text" },
       ],
       onSubmit: async (fd) => {
-        const amount_cents = valueFromAuecString(fd.get("amount"));
+        const amount_cents = valueFromAuecString(fd.get("amount")); // entier aUEC
         if (amount_cents == null) { alert("Montant invalide"); return; }
         const payload = {
           reason: fd.get("reason"),
@@ -1048,7 +1043,6 @@ function wireCashboxActions() {
       await refreshCashbox();
     }
     if (editId) {
-      // Fetch la ligne actuelle
       const table = type === "don" ? "donations" : "expenses";
       const { data, error } = await supabase.from(table).select("*").eq("id", editId).single();
       if (error) { alert("Erreur: " + error.message); return; }
@@ -1058,12 +1052,12 @@ function wireCashboxActions() {
           title: "Éditer un don",
           fields: [
             { id: "giver_name", label: "Donateur·rice", required: true, type: "text", value: data.giver_name },
-            { id: "amount", label: "Montant (€)", required: true, type: "text", value: (data.amount_cents/100).toString().replace(".", ",") },
+            { id: "amount", label: "Montant (aUEC)", required: true, type: "text", value: String(data.amount_cents) },
             { id: "date", label: "Date", required: true, type: "date", value: data.date },
             { id: "notes", label: "Notes", type: "text", value: data.notes || "" },
           ],
           onSubmit: async (fd) => {
-            const amount_cents = valueFromAuecString(fd.get("amount"));
+            const amount_cents = valueFromAuecString(fd.get("amount")); // entier aUEC
             if (amount_cents == null) { alert("Montant invalide"); return; }
             const patch = {
               giver_name: fd.get("giver_name"),
@@ -1082,12 +1076,12 @@ function wireCashboxActions() {
           title: "Éditer une dépense",
           fields: [
             { id: "reason", label: "Raison / Objet", required: true, type: "text", value: data.reason },
-            { id: "amount", label: "Montant (€)", required: true, type: "text", value: (data.amount_cents/100).toString().replace(".", ",") },
+            { id: "amount", label: "Montant (aUEC)", required: true, type: "text", value: String(data.amount_cents) },
             { id: "date", label: "Date", required: true, type: "date", value: data.date },
             { id: "notes", label: "Justif / Notes", type: "text", value: data.notes || "" },
           ],
           onSubmit: async (fd) => {
-            const amount_cents = valueFromAuecString(fd.get("amount"));
+            const amount_cents = valueFromAuecString(fd.get("amount")); // entier aUEC
             if (amount_cents == null) { alert("Montant invalide"); return; }
             const patch = {
               reason: fd.get("reason"),
