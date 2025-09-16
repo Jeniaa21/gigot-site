@@ -195,45 +195,7 @@
       </div>
     </section>
 
-    <!-- visible uniquement si l’utilisateur est dans la guilde + a un rôle autorisé -->
-    <section class="section" data-protected>
-      <div class="container">
-        <h2>Espace membres</h2>
-
-        <!-- Inventaire -->
-        <section id="inventaire" class="section">
-          <div class="container">
-            <h2>Inventaire</h2>
-
-            <!-- Recherche -->
-            <input type="text" id="search" placeholder="Rechercher..." />
-
-            <!-- Tableau -->
-            <table id="inv-table">
-              <thead>
-                <tr>
-                  <th data-col="type">Type</th>
-                  <th data-col="name">Item</th>
-                  <th data-col="location">Lieu</th>
-                  <th data-col="owner">Possesseur</th>
-                  <th data-col="unit_price">Prix unitaire</th>
-                  <th data-col="qty">Quantité</th>
-                  <th data-col="valeur_totale">Valeur totale</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="inv-body"></tbody>
-            </table>
-
-            <!-- Pagination -->
-            <div id="pagination"></div>
-
-            <!-- Bouton ajout -->
-            <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
-          </div>
-        </section>
-
-        <!-- Modal (ajout / édition) -->
+    <!-- Modal (ajout / édition) -->
         <div id="modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:#6a5531; padding:20px; border-radius:8px; z-index:1000; max-width:520px; width:calc(100% - 32px);">
           <h3 id="modal-title">Nouvel item</h3>
           <form id="form-item">
@@ -266,13 +228,20 @@
       </div>
     </section>
 
-    <!-- visible uniquement si rôle staff -->
-    <section class="section" data-staff>
+    
+    <section id="espace-membres" class="section section-accent">
       <div class="container">
-        <h2>Staff</h2>
-        <p>Outils et infos pour l’équipe staff.</p>
+        <h2>Accès membres</h2>
+        <article class="card" id="members-cta" aria-live="polite">
+          <h3>Zone réservée</h3>
+          <p id="members-note">Connecte-toi avec Discord pour vérifier ton accès. L’accès est réservé aux membres reconnus sur notre serveur Discord.</p>
+          <div class="cta">
+            <button id="members-action" class="btn btn-primary">Se connecter avec Discord</button>
+          </div>
+        </article>
       </div>
     </section>
+
 
     <section id="recrutement" class="section section-accent">
       <div class="container">

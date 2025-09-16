@@ -20,12 +20,16 @@ function setYear() {
   if (y) y.textContent = new Date().getFullYear();
 }
 function setAuthButtons(isLoggedIn) {
+  window.__gigotSessionLoggedIn = !!isLoggedIn;
   const btnLogin = document.getElementById("btn-login");
   const btnLogout = document.getElementById("btn-logout");
   if (btnLogin) btnLogin.style.display = isLoggedIn ? "none" : "inline-flex";
   if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
 }
 function updateAccessClasses(flags) {
+// expose flags to CTA
+window.__gigotCanAccess = !!(flags?.in_guild && (flags.hasBasic || flags.hasStaff));
+
   const root = document.documentElement;
   if (flags?.in_guild && (flags.hasBasic || flags.hasStaff)) {
     root.classList.add("can-access");
@@ -40,11 +44,13 @@ function updateAccessClasses(flags) {
 
 // ————— Auth / rôles Discord —————
 async function syncDiscordRoles() {
+  // sync roles; CTA updated after classes
   const { data: { session } } = await supabase.auth.getSession();
   setAuthButtons(!!session);
 
   if (!session) {
     updateAccessClasses({ in_guild: false });
+    refreshMembersCTA();
     return;
   }
 
@@ -60,6 +66,7 @@ async function syncDiscordRoles() {
     if (!res.ok) {
       console.warn("[GIGOT] Sync roles KO:", data);
       updateAccessClasses({ in_guild: false });
+    refreshMembersCTA();
       return;
     }
     updateAccessClasses({
@@ -67,9 +74,11 @@ async function syncDiscordRoles() {
       hasBasic: !!data.hasBasic,
       hasStaff: !!data.hasStaff
     });
+    refreshMembersCTA();
   } catch (err) {
     console.error("[GIGOT] Sync error:", err);
     updateAccessClasses({ in_guild: false });
+    refreshMembersCTA();
   }
 }
 
@@ -89,8 +98,17 @@ async function logout() {
   await supabase.auth.signOut();
   setAuthButtons(false);
   updateAccessClasses({ in_guild: false });
+    refreshMembersCTA();
   clearInventoryUI();
-}
+  // redirection si on est sur la page membres
+  const onMembersPage = document.body?.dataset?.page === "members" || /membre\.html$/i.test(location.pathname);
+  if (onMembersPage) {
+    const base = (typeof getRepoBaseForGithubPages === "function") ? getRepoBaseForGithubPages() : "";
+    window.location.replace(`${base}/index.html`);
+  }
+} ;
+  clearInventoryUI();
+
 
 // ————— Inventaire —————
 console.log("[GIGOT] Inventaire JS chargé");
@@ -373,16 +391,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   const { data: { session } } = await supabase.auth.getSession();
   setAuthButtons(!!session);
   await syncDiscordRoles();
+  refreshMembersCTA();
 
   // Resync sur changement d’état
   supabase.auth.onAuthStateChange(async (_event, sess) => {
     setAuthButtons(!!sess);
     await syncDiscordRoles();
+  refreshMembersCTA();
   });
 });
 
+
+// ————— Expose helpers sur window —————
+window.syncDiscordRoles = syncDiscordRoles;
+window.updateAccessClasses = updateAccessClasses;
+window.loginWithDiscord = loginWithDiscord;
+window.logout = logout;
+
 // Rafraîchir l’inventaire quand accès autorisé
 document.addEventListener("gigot-can-access", (e) => {
+  refreshMembersCTA();
   if (e.detail === true) fetchItems();
   else clearInventoryUI();
 });
@@ -467,6 +495,50 @@ async function loadColumnToDatalist(col, dlId) {
 
   console.debug(`[Inventaire] datalist ${dlId}:`, values.length, "valeurs");
 }
+
+// ————— CTA "Espace membres" (page publique) —————
+let __lastLogin = false;
+let __lastAccess = false;
+
+function refreshMembersCTA() {
+  const card = document.getElementById("members-cta");
+  const action = document.getElementById("members-action");
+  const note = document.getElementById("members-note");
+  if (!card || !action || !note) return;
+
+  const canAccess = document.documentElement.classList.contains("can-access");
+  const isLoggedIn = !!(window.__gigotSessionLoggedIn);
+
+  // Reset listeners
+  const newAction = action.cloneNode(true);
+  action.parentNode.replaceChild(newAction, action);
+
+  if (!isLoggedIn) {
+    note.textContent = "Connecte-toi avec Discord pour vérifier ton accès. L’accès est réservé aux membres reconnus sur notre serveur Discord.";
+    newAction.textContent = "Se connecter avec Discord";
+    newAction.disabled = false;
+    newAction.className = "btn btn-primary";
+    newAction.addEventListener("click", loginWithDiscord);
+  } else if (isLoggedIn && canAccess) {
+    note.textContent = "Accès validé. Tu peux entrer dans l’espace membres.";
+    newAction.textContent = "Ouvrir l’espace membres";
+    newAction.disabled = false;
+    newAction.className = "btn btn-primary";
+    newAction.addEventListener("click", () => {
+      const base = (typeof getRepoBaseForGithubPages === "function") ? getRepoBaseForGithubPages() : "";
+      window.location.href = `${base}/membre.html`;
+    });
+  } else {
+    note.textContent = "Accès réservé aux membres reconnus sur le Discord. Ton compte est connecté mais n’a pas (encore) les droits.";
+    newAction.textContent = "Accès restreint";
+    newAction.disabled = true;
+    newAction.className = "btn btn-ghost";
+  }
+
+  __lastLogin = isLoggedIn;
+  __lastAccess = canAccess;
+}
+
 // ===== Carousel G.I.G.O.T =====
 (function initCarousel(){
   const root = document.querySelector(".carousel");

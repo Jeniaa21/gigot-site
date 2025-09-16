@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>G.I.G.O.T — Espace membres</title>
+  <meta name="description" content="Espace membres G.I.G.O.T (accès restreint aux membres Discord autorisés)." />
+
+  <!-- Polices -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="./styles.css" />
+
+  <!-- CSP identique à index.html -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://cdn.jsdelivr.net;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src https://fonts.gstatic.com 'self';
+    img-src 'self' data: https:;
+    connect-src 'self' https://fjhsakmjcdqpolccihyj.supabase.co;
+    object-src 'none';
+    base-uri 'self';
+    upgrade-insecure-requests;
+  ">
+
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <!-- App logic partagée -->
+  <script src="./app.js?v=members-guard" defer></script>
+  <!-- Helpers spécifiques page membres (redirection/guard) -->
+  <script src="./members.js?v=1" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a href="./index.html" class="logo" aria-label="Accueil G.I.G.O.T">
+        <span class="logo-mark"><img src="img/logoGIGOT.png" alt="Logo G.I.G.O.T" class="logo-img"></span>
+        <span class="logo-text">G.I.G.O.T</span>
+      </a>
+      <nav aria-label="Navigation principale">
+        <ul class="nav">
+          <li><a href="./index.html#histoire">Histoire</a></li>
+          <li><a href="./index.html#divisions">Divisions</a></li>
+          <li><a href="./index.html#fonctionnement">Fonctionnement</a></li>
+          <li><a href="./index.html#recrutement">Recrutement</a></li>
+          <li class="nav-cta">
+            <div class="cta">
+              <button class="btn btn-primary" id="btn-login">Se connecter avec Discord</button>
+              <button class="btn btn-ghost" id="btn-logout">Se déconnecter</button>
+            </div>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content" class="site-main">
+    <section class="section">
+      <div class="container">
+        <h2>Espace membres</h2>
+        <p class="lead">Accès réservé aux membres reconnus sur le Discord. Redirection automatique si l’accès n’est pas validé.</p>
+      </div>
+    </section>
+
+    <!-- visible uniquement si l’utilisateur est dans la guilde + a un rôle autorisé -->
+    <section class="section" data-protected>
+      <div class="container">
+        <h2>Espace membres</h2>
+
+        <!-- Inventaire -->
+        <section id="inventaire" class="section">
+          <div class="container">
+            <h2>Inventaire</h2>
+
+            <!-- Recherche -->
+            <input type="text" id="search" placeholder="Rechercher..." />
+
+            <!-- Tableau -->
+            <table id="inv-table">
+              <thead>
+                <tr>
+                  <th data-col="type">Type</th>
+                  <th data-col="name">Item</th>
+                  <th data-col="location">Lieu</th>
+                  <th data-col="owner">Possesseur</th>
+                  <th data-col="unit_price">Prix unitaire</th>
+                  <th data-col="qty">Quantité</th>
+                  <th data-col="valeur_totale">Valeur totale</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inv-body"></tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div id="pagination"></div>
+
+            <!-- Bouton ajout -->
+            <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
+          </div>
+        </section>
+
+        
+
+    <!-- visible uniquement si rôle staff -->
+    <section class="section" data-staff>
+      <div class="container">
+        <h2>Staff</h2>
+        <p>Outils et infos pour l’équipe staff.</p>
+      </div>
+    </section>
+
+    
+  </main>
+
+  <footer class="site-footer">
+    <div class="container foot">
+      <p>© <span id="year"></span> G.I.G.O.T — L’absurde, organisé.</p>
+      <a href="#content" class="to-top" aria-label="Revenir en haut">↑ Haut de page</a>
+    </div>
+  </footer>
+</body>
+</html>
