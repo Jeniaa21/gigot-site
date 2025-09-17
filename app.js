@@ -1203,26 +1203,26 @@ function aggregateDonationsByPerson(donations, { minPercent = 0.02 } = {}) {
     sums.set(name, curr + (Number(d.amount_cents) || 0));
   }
   const entries = Array.from(sums.entries());
-  const total = entries.reduce((s, [,v]) => s + v, 0);
-  if (total <= 0) {
-    return { labels: [], values: [], total, other: 0, entries: [] };
-  }
-  // tri desc
+  const totalDon = entries.reduce((s, [,v]) => s + v, 0);
+
+  // tri desc par montant
   entries.sort((a,b) => b[1] - a[1]);
 
-  // Regroupe < minPercent dans “Autres”
+  // Regroupe < minPercent en “Autres”
   const main = [];
   let other = 0;
   for (const [name, val] of entries) {
-    const pct = val / total;
+    const pct = totalDon ? (val / totalDon) : 0;
     if (pct < minPercent) other += val;
     else main.push([name, val]);
   }
   if (other > 0) main.push(["Autres", other]);
 
-  const labels = main.map(([n]) => n);
-  const values = main.map(([,v]) => v);
-  return { labels, values, total, other, entries };
+  return {
+    donorEntries: entries,           // triés desc
+    main,                            // [ [name,val], ... , ["Autres", other?] ]
+    totalDon                         // total dons (hors réserve)
+  };
 }
 
 function getPeriodRangeFromSelect() {
@@ -1265,48 +1265,59 @@ function buildPieSummaryText(agg) {
 }
 
 async function renderDonationsByPersonPie({ from, to } = {}) {
-  const canvas = document.getElementById("donations-by-person-pie");
+  const canvas   = document.getElementById("donations-by-person-pie");
   const fallback = document.getElementById("donations-pie-fallback");
-  const summary = document.getElementById("donations-pie-summary");
+  const summary  = document.getElementById("donations-pie-summary");
   if (!canvas) return;
 
-  // state: chargement
   if (fallback) { fallback.style.display = "block"; fallback.textContent = "Chargement…"; }
   if (summary)  { summary.textContent = ""; }
 
-  const { data: donations, error } = await fetchDonations({ from, to });
-  if (error) {
-    console.error("[donations pie] fetch error", error);
-    if (fallback) { fallback.style.display = "block"; fallback.textContent = "Erreur de chargement.";}
+  // 1) fetch dons (+ filtre) et réserve en parallèle
+  let q = supabase.from("donations").select("giver_name,amount_cents,date").order("date", { ascending: false });
+  if (from) q = q.gte("date", from);
+  if (to)   q = q.lte("date", to);
+  const [{ data: donations, error: eDon }, reserveCents] = await Promise.all([
+    q, fetchReserveCents()
+  ]);
+  if (eDon) {
+    console.error("[donations pie] fetch error", eDon);
+    if (fallback) { fallback.style.display = "block"; fallback.textContent = "Erreur de chargement."; }
     return;
   }
 
+  // 2) agrégation par personne (dons)
   const agg = aggregateDonationsByPerson(donations, { minPercent: 0.02 });
-  if (!agg.total) {
+
+  // 3) construire labels+values avec la réserve comme tranche dédiée
+  const labels = agg.main.map(([n]) => n);
+  const values = agg.main.map(([,v]) => v);
+
+  // Ajout tranche "Réserve (gelée)" à la fin — on ne la regroupe jamais dans “Autres”
+  const reserveVal = Math.max(0, Number(reserveCents) || 0);
+  if (reserveVal > 0) {
+    labels.push("Réserve (gelée)");
+    values.push(reserveVal);
+  }
+
+  const grandTotal = values.reduce((s,v)=>s+v, 0);
+
+  if (!grandTotal) {
     if (donationsPieChart) { donationsPieChart.destroy(); donationsPieChart = null; }
     if (fallback) { fallback.style.display = "block"; fallback.textContent = "Aucune donnée disponible."; }
     if (summary)  { summary.textContent = ""; }
     return;
   }
 
-  // on a des données
   if (fallback) fallback.style.display = "none";
-
-  // Détruit l’instance précédente si existe
-  if (donationsPieChart) {
-    donationsPieChart.destroy();
-    donationsPieChart = null;
-  }
+  if (donationsPieChart) { donationsPieChart.destroy(); donationsPieChart = null; }
 
   const ctx = canvas.getContext("2d");
   donationsPieChart = new Chart(ctx, {
     type: "pie",
     data: {
-      labels: agg.labels,
-      datasets: [{
-        data: agg.values,
-        // couleurs automatiques (Chart.js v4 choisit une palette par défaut)
-      }]
+      labels,
+      datasets: [{ data: values }]
     },
     options: {
       responsive: true,
@@ -1316,10 +1327,10 @@ async function renderDonationsByPersonPie({ from, to } = {}) {
         tooltip: {
           callbacks: {
             label: (context) => {
-              const name = context.label || "";
-              const val  = context.parsed || 0;
+              const name  = context.label || "";
+              const val   = context.parsed || 0;
               const total = (context.chart.data.datasets[0].data || []).reduce((s,v)=>s+v,0) || 1;
-              const pct = Math.round((val / total) * 1000) / 10;
+              const pct   = Math.round((val / total) * 1000) / 10;
               return `${name} — ${auecFromValue(val)} — ${pct}%`;
             }
           }
@@ -1328,7 +1339,19 @@ async function renderDonationsByPersonPie({ from, to } = {}) {
     }
   });
 
-  if (summary) summary.textContent = buildPieSummaryText(agg);
+  // Résumé texte (top 3 + réserve si présente)
+  if (summary) {
+    // repartir depuis les valeurs non groupées (donorEntries) pour top clair
+    const top = (agg.donorEntries || []).slice(0, 3).map(([n,v]) => {
+      const pct = grandTotal ? Math.round((v / grandTotal) * 1000) / 10 : 0;
+      return `${n} ${pct}%`;
+    });
+    if (reserveVal > 0) {
+      const pctRes = Math.round((reserveVal / grandTotal) * 1000) / 10;
+      top.push(`Réserve ${pctRes}%`);
+    }
+    summary.textContent = top.length ? `Top : ${top.join(", ")}.` : "";
+  }
 }
 
 // ——— Filtre période
@@ -1374,3 +1397,17 @@ deleteDonation = async (...args) => {
   await refreshCashboxAndCharts();
   return res;
 };
+// Réserve (part gelée) — lit la vue si dispo, sinon calcule côté client
+async function fetchReserveCents() {
+  // Essai via vue (recommandé)
+  const { data, error } = await supabase.from('v_reserve_balance').select('reserve_cents').single();
+  if (!error && data && typeof data.reserve_cents === 'number') return data.reserve_cents;
+
+  // Fallback: calcule depuis expenses / reserve_uses (si la vue n'existe pas)
+  const [{ data: pw }, { data: uses }] = await Promise.all([
+    supabase.from('expenses').select('malus_cents').eq('is_personal_withdrawal', true),
+    supabase.from('reserve_uses').select('used_cents'),
+  ]);
+  const sum = (arr, key) => (arr || []).reduce((s, r) => s + (Number(r[key]) || 0), 0);
+  return Math.max(0, sum(pw, 'malus_cents') - sum(uses, 'used_cents'));
+}
