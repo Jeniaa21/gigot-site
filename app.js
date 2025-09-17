@@ -1102,3 +1102,194 @@ function wireCashboxActions() {
   document.getElementById("donations-table")?.addEventListener("click", (e) => onTableClick(e, "don"));
   document.getElementById("expenses-table")?.addEventListener("click", (e) => onTableClick(e, "dep"));
 }
+// ====== DONATIONS PIE (Chart.js) ======
+let donationsPieChart = null;
+
+// Données: fetch optionnellement filtrées par date
+async function fetchDonations({ from, to } = {}) {
+  let q = supabase.from("donations").select("giver_name,amount_cents,date").order("date", { ascending: false });
+  if (from) q = q.gte("date", from);
+  if (to)   q = q.lte("date", to);
+  return q;
+}
+
+// Agrège {giver_name: somme}
+function aggregateDonationsByPerson(donations, { minPercent = 0.02 } = {}) {
+  const sums = new Map();
+  for (const d of (donations || [])) {
+    const name = (d.giver_name || "Anonyme").trim();
+    const curr = sums.get(name) || 0;
+    sums.set(name, curr + (Number(d.amount_cents) || 0));
+  }
+  const entries = Array.from(sums.entries());
+  const total = entries.reduce((s, [,v]) => s + v, 0);
+  if (total <= 0) {
+    return { labels: [], values: [], total, other: 0, entries: [] };
+  }
+  // tri desc
+  entries.sort((a,b) => b[1] - a[1]);
+
+  // Regroupe < minPercent dans “Autres”
+  const main = [];
+  let other = 0;
+  for (const [name, val] of entries) {
+    const pct = val / total;
+    if (pct < minPercent) other += val;
+    else main.push([name, val]);
+  }
+  if (other > 0) main.push(["Autres", other]);
+
+  const labels = main.map(([n]) => n);
+  const values = main.map(([,v]) => v);
+  return { labels, values, total, other, entries };
+}
+
+function getPeriodRangeFromSelect() {
+  const sel = document.getElementById("donations-period");
+  const v = sel?.value || "all";
+  const today = new Date();
+  const pad = (x) => String(x).padStart(2, "0");
+
+  const to = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  if (v === "all") return { from: null, to: null, label: "Tout" };
+  if (v === "ytd") return { from: `${today.getFullYear()}-01-01`, to, label: "Année en cours" };
+
+  // v = nb de jours (30 / 90 / 365)
+  const days = Number(v);
+  const d = new Date(today);
+  d.setDate(d.getDate() - days);
+  const from = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  return { from, to, label: `${days} jours` };
+}
+
+function buildPieSummaryText(agg) {
+  if (!agg || !agg.total) return "Aucune donnée disponible.";
+  // top 4 pour le résumé
+  const list = [];
+  const denom = agg.total || 1;
+  let i = 0;
+  for (const [name, val] of agg.entries) {
+    const pct = Math.round((val / denom) * 1000) / 10; // 1 décimale
+    list.push(`${name} ${pct}%`);
+    if (++i >= 4) break;
+  }
+  // Si “Autres”
+  if (agg.labels.includes("Autres")) {
+    const idx = agg.labels.indexOf("Autres");
+    const val = agg.values[idx];
+    const pct = Math.round((val / denom) * 1000) / 10;
+    list.push(`Autres ${pct}%`);
+  }
+  return `Top contributeurs : ${list.join(", ")}.`;
+}
+
+async function renderDonationsByPersonPie({ from, to } = {}) {
+  const canvas = document.getElementById("donations-by-person-pie");
+  const fallback = document.getElementById("donations-pie-fallback");
+  const summary = document.getElementById("donations-pie-summary");
+  if (!canvas) return;
+
+  // state: chargement
+  if (fallback) { fallback.style.display = "block"; fallback.textContent = "Chargement…"; }
+  if (summary)  { summary.textContent = ""; }
+
+  const { data: donations, error } = await fetchDonations({ from, to });
+  if (error) {
+    console.error("[donations pie] fetch error", error);
+    if (fallback) { fallback.style.display = "block"; fallback.textContent = "Erreur de chargement.";}
+    return;
+  }
+
+  const agg = aggregateDonationsByPerson(donations, { minPercent: 0.02 });
+  if (!agg.total) {
+    if (donationsPieChart) { donationsPieChart.destroy(); donationsPieChart = null; }
+    if (fallback) { fallback.style.display = "block"; fallback.textContent = "Aucune donnée disponible."; }
+    if (summary)  { summary.textContent = ""; }
+    return;
+  }
+
+  // on a des données
+  if (fallback) fallback.style.display = "none";
+
+  // Détruit l’instance précédente si existe
+  if (donationsPieChart) {
+    donationsPieChart.destroy();
+    donationsPieChart = null;
+  }
+
+  const ctx = canvas.getContext("2d");
+  donationsPieChart = new Chart(ctx, {
+    type: "pie",
+    data: {
+      labels: agg.labels,
+      datasets: [{
+        data: agg.values,
+        // couleurs automatiques (Chart.js v4 choisit une palette par défaut)
+      }]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 300 },
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const name = context.label || "";
+              const val  = context.parsed || 0;
+              const total = (context.chart.data.datasets[0].data || []).reduce((s,v)=>s+v,0) || 1;
+              const pct = Math.round((val / total) * 1000) / 10;
+              return `${name} — ${auecFromValue(val)} — ${pct}%`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (summary) summary.textContent = buildPieSummaryText(agg);
+}
+
+// ——— Filtre période
+function wireDonationsPieFilters() {
+  const sel = document.getElementById("donations-period");
+  if (!sel) return;
+  sel.addEventListener("change", () => {
+    const { from, to } = getPeriodRangeFromSelect();
+    renderDonationsByPersonPie({ from, to });
+  });
+}
+
+// Appels de mise à jour : après refreshCashbox + après CRUD dons
+document.addEventListener("gigot-can-access", () => {
+  wireDonationsPieFilters();
+  const { from, to } = getPeriodRangeFromSelect();
+  renderDonationsByPersonPie({ from, to });
+});
+
+// Si tu as déjà ces fonctions, ajoute juste la ligne "renderDonationsByPersonPie(...)"
+async function refreshCashboxAndCharts() {
+  await refreshCashbox();
+  const { from, to } = getPeriodRangeFromSelect();
+  renderDonationsByPersonPie({ from, to });
+}
+
+// Intègre la MAJ après CRUD dons (là où tu appelles déjà refreshCashbox)
+const _createDonation = createDonation;
+createDonation = async (...args) => {
+  const res = await _createDonation(...args);
+  await refreshCashboxAndCharts();
+  return res;
+};
+const _updateDonation = updateDonation;
+updateDonation = async (...args) => {
+  const res = await _updateDonation(...args);
+  await refreshCashboxAndCharts();
+  return res;
+};
+const _deleteDonation = deleteDonation;
+deleteDonation = async (...args) => {
+  const res = await _deleteDonation(...args);
+  await refreshCashboxAndCharts();
+  return res;
+};

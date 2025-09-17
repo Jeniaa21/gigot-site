@@ -593,3 +593,27 @@ select:focus {
   border-color: rgba(255, 235, 190, .6);
   box-shadow: 0 0 4px rgba(255, 235, 190, .4);
 }
+/* === Charts === */
+.chart-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 12px;
+}
+#donations-by-person-pie {
+  max-width: 100%;
+  height: auto;
+}
+#cashbox-charts .toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0 12px;
+}
+#cashbox-charts select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 235, 190, .22);
+  background: #1f180c;
+  color: var(--paper);
+}

@@ -15,7 +15,8 @@
   <link rel="stylesheet" href="./styles.css" />
 
   <!-- CSP identique à index.html -->
-  <meta http-equiv="Content-Security-Policy" content="
+  <meta http-equiv="Content-Security-Policy" 
+    content="
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
@@ -25,6 +26,10 @@
     object-src 'none';
     base-uri 'self';
     upgrade-insecure-requests;
+    img-src 'self' data:;
+    style-src 'self' 'unsafe-inline';
+    script-src 'self' https://cdn.jsdelivr.net https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2 'unsafe-inline';
+    font-src 'self' data:;
   ">
 
   <!-- Supabase UMD -->
@@ -33,6 +38,7 @@
   <script src="./app.js?v=members-guard" defer></script>
   <!-- Helpers spécifiques page membres (redirection/guard) -->
   <script src="./members.js?v=1" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 </head>
 <body>
   <header class="site-header">
