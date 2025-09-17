@@ -1001,31 +1001,112 @@ function wireCashboxActions() {
   });
 
   if (addExpBtn) addExpBtn.addEventListener("click", () => {
-    if (!isStaff) return;
+    if (!document.documentElement.classList.contains("is-staff")) return;
+
     cashboxModal.show({
       title: "Ajouter une dépense",
       fields: [
-        { id: "reason", label: "Raison / Objet", required: true, type: "text" },
-        { id: "amount", label: "Montant (aUEC)", required: true, placeholder: "1234", type: "text" },
-        { id: "date", label: "Date", required: true, type: "date" },
-        { id: "notes", label: "Justif / Notes (URL possible)", type: "text" },
+        // Toggle retrait personnel
+        { id: "is_pw", label: "Retrait personnel", type: "checkbox" },
+
+        // --- Champs Retrait Perso ---
+        { id: "beneficiary_name", label: "Bénéficiaire", type: "text", placeholder: "Pseudo (ou nom)", required: false },
+        { id: "requested", label: "Montant demandé (aUEC)", type: "text", placeholder: "ex: 100000", required: false },
+        { id: "malus_pct", label: "Taux de malus (%)", type: "number", placeholder: "20", required: false },
+
+          // --- Champs Orga ---
+        { id: "reason", label: "Raison / Objet (orga)", type: "text", placeholder: "ex: Achat consommables", required: false },
+        { id: "amount", label: "Montant (aUEC)", type: "text", placeholder: "ex: 250000", required: false },
+        { id: "r_max", label: "Cap r_max (%) (optionnel)", type: "number", placeholder: "ex: 20", required: false },
+
+        // commun
+        { id: "date", label: "Date", type: "date", required: true },
+        { id: "notes", label: "Notes", type: "text", placeholder: "(optionnel)" },
       ],
       onSubmit: async (fd) => {
-        const amount_cents = valueFromAuecString(fd.get("amount")); // entier aUEC
-        if (amount_cents == null) { alert("Montant invalide"); return; }
-        const payload = {
-          reason: fd.get("reason"),
-          amount_cents,
-          date: fd.get("date"),
-          notes: fd.get("notes") || null
-        };
-        const { error } = await createExpense(payload);
-        if (error) { alert("Erreur: " + error.message); return; }
+        const is_pw = fd.get("is_pw") === "on";
+        const date  = fd.get("date") || new Date().toISOString().slice(0,10);
+        const notes = fd.get("notes") || null;
+
+        if (is_pw) {
+          // Retrait personnel
+          const beneficiary_name = fd.get("beneficiary_name")?.toString().trim();
+          const requested_cents  = valueFromAuecString(fd.get("requested"));
+          const malus_rate_pct   = Number(fd.get("malus_pct") || 20);
+
+          if (!beneficiary_name) { alert("Bénéficiaire requis"); return; }
+          if (requested_cents == null || requested_cents <= 0) { alert("Montant demandé invalide"); return; }
+          if (!(malus_rate_pct >= 0 && malus_rate_pct <= 100)) { alert("Taux malus invalide"); return; }
+
+          const { data, error } = await supabase.rpc("personal_withdrawal", {
+            p_beneficiary_name: beneficiary_name,
+            p_requested_cents: requested_cents,
+            p_malus_rate_pct: malus_rate_pct,
+            p_date: date,
+            p_notes: notes
+          });
+          if (error) { alert("Erreur: " + error.message); return; }
+        } else {
+          // Dépense d’orga
+          const reason = fd.get("reason")?.toString().trim();
+          const expense_cents = valueFromAuecString(fd.get("amount"));
+          const r_max_pct = fd.get("r_max") ? Number(fd.get("r_max")) : null;
+
+          if (!reason) { alert("Raison requise"); return; }
+          if (expense_cents == null || expense_cents <= 0) { alert("Montant invalide"); return; }
+          if (r_max_pct != null && !(r_max_pct >= 0 && r_max_pct <= 100)) { alert("r_max invalide"); return; }
+
+          // (Optionnel) tu peux d’abord simuler:
+          // const sim = await supabase.rpc("org_expense", { p_reason: reason, p_expense_cents: expense_cents, p_date: date, p_notes: notes, p_r_max_pct: r_max_pct, p_dry_run: true });
+
+          const { data, error } = await supabase.rpc("org_expense", {
+            p_reason: reason,
+            p_expense_cents: expense_cents,
+            p_date: date,
+            p_notes: notes,
+            p_r_max_pct: r_max_pct
+          });
+          if (error) { alert("Erreur: " + error.message); return; }
+        }
+
         cashboxModal.hide();
-        await refreshCashbox();
+        await refreshCashboxAndCharts(); // recharges tableaux + graphe
       }
     });
+
+    // —— Post-render: wiring preview dynamique (UX)
+    // Affiche / masque les champs selon la case
+    const $ = (id) => document.getElementById(id);
+    const toggle = () => {
+      const is_pw = $("is_pw")?.checked;
+      ["beneficiary_name","requested","malus_pct"].forEach(id => $(id)?.closest(".form-row").classList.toggle("hidden", !is_pw));
+      ["reason","amount","r_max"].forEach(id => $(id)?.closest(".form-row").classList.toggle("hidden", is_pw));
+    };
+    $("is_pw")?.addEventListener("change", toggle);
+    toggle(); // init
+
+    // Preview retrait perso (net / malus)
+    const showPreview = () => {
+      const req = valueFromAuecString($("requested")?.value || "");
+      const pct = Number($("malus_pct")?.value || 20);
+      if (req && pct >=0 && pct<=100) {
+        const malus  = Math.floor(req * (pct/100));
+        const payout = req - malus;
+        // petit helper UI
+        let box = $("pw-preview");
+        if (!box) {
+          box = document.createElement("div");
+          box.id = "pw-preview";
+          box.className = "muted";
+          $("malus_pct")?.closest(".form-row")?.after(box);
+        }
+        box.textContent = `Aperçu: Reçu net ${auecFromValue(payout)} • Malus vers réserve ${auecFromValue(malus)}`;
+      }
+    };
+    $("requested")?.addEventListener("input", showPreview);
+    $("malus_pct")?.addEventListener("input", showPreview);
   });
+
 
   // Délégation pour édit/suppr
   const onTableClick = async (e, type) => {
