@@ -28,16 +28,17 @@
         <span aria-current="page">Guide pour commencer</span>
       </nav>
       <h1>Guide pour commencer</h1>
-      <p class="muted">Choisissez un guide pour débuter. Cette page est générée depuis <code>guides.json</code>.</p>
+      <p class="muted">Choisissez un guide pour débuter.</p>
     </div>
   </header>
 
   <main class="section">
     <div class="container">
-      <div class="toolbar" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+      <div class="toolbar">
         <label for="guide-search" class="sr-only">Rechercher un guide</label>
         <input id="guide-search" type="search" placeholder="Rechercher un guide…" aria-label="Rechercher un guide">
       </div>
+
 
       <div id="guides-grid" class="tile-grid" aria-live="polite"></div>
       <p id="guides-empty" class="muted" style="display:none">Aucun guide trouvé.</p>
