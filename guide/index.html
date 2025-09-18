@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- CSP: on garde strict et local (mêmes règles que membre.html, pas d’externe) -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self';
+             script-src 'self' 'unsafe-inline';
+             style-src 'self' 'unsafe-inline';
+             img-src 'self' data:;
+             font-src 'self' data:;
+             connect-src 'self';
+             object-src 'none';
+             base-uri 'self';
+             upgrade-insecure-requests;">
+
+  <title>Guide pour commencer</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="breadcrumb">
+        <a href="../membre.html">Membres</a>
+        <span aria-hidden="true">›</span>
+        <span aria-current="page">Guide pour commencer</span>
+      </nav>
+      <h1>Guide pour commencer</h1>
+      <p class="muted">Choisissez un guide pour débuter. Cette page est générée depuis <code>guides.json</code>.</p>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container">
+      <div class="toolbar" style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+        <label for="guide-search" class="sr-only">Rechercher un guide</label>
+        <input id="guide-search" type="search" placeholder="Rechercher un guide…" aria-label="Rechercher un guide">
+      </div>
+
+      <div id="guides-grid" class="tile-grid" aria-live="polite"></div>
+      <p id="guides-empty" class="muted" style="display:none">Aucun guide trouvé.</p>
+    </div>
+  </main>
+
+  <script>
+    // Mini rendu dynamique depuis guides.json (même origine)
+    async function loadGuides() {
+      const res = await fetch('./guides.json', { cache: 'no-store' });
+      const guides = await res.json();
+      const grid = document.getElementById('guides-grid');
+      const empty = document.getElementById('guides-empty');
+
+      function render(list) {
+        grid.innerHTML = '';
+        if (!list.length) { empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        for (const g of list) {
+          const a = document.createElement('a');
+          a.className = 'tile';
+          a.href = `./${g.slug}.html`;
+          a.setAttribute('aria-label', g.title);
+          a.innerHTML = `
+            <div class="tile-icon" aria-hidden="true">${g.icon ?? '📘'}</div>
+            <h3 class="tile-title">${g.title}</h3>
+            <p class="tile-desc">${g.desc ?? ''}</p>
+          `;
+          grid.appendChild(a);
+        }
+      }
+
+      // recherche
+      const search = document.getElementById('guide-search');
+      const applyFilter = () => {
+        const q = (search.value || '').toLowerCase().trim();
+        if (!q) return render(guides);
+        render(guides.filter(g =>
+          (g.title || '').toLowerCase().includes(q) ||
+          (g.desc || '').toLowerCase().includes(q) ||
+          (g.slug || '').toLowerCase().includes(q)
+        ));
+      };
+      search.addEventListener('input', applyFilter);
+
+      render(guides);
+    }
+    loadGuides();
+  </script>
+</body>
+</html>
