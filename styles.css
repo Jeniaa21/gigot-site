@@ -222,7 +222,7 @@ body::after{
 
 /* ------------------ Sections / titres ------------------ */
 .section{ 
-  padding: clamp(40px, 6vw, 10px) 0; 
+  padding: clamp(10px, 6vw, 0px) 0; 
   scroll-margin-top:80px; 
 }
 .section h2{
