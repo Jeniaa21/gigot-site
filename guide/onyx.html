@@ -1,8 +1,12 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <title>Guide Onyx — Contrats & Parcours</title>
+
+  <!-- CSP locale (aucun CDN requis ici) -->
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self';
              script-src 'self' 'unsafe-inline';
@@ -13,36 +17,180 @@
              object-src 'none';
              base-uri 'self';
              upgrade-insecure-requests;">
-  <title>Guide Onyx</title>
-  <link rel="stylesheet" href="../styles.css">
+
+  <link rel="stylesheet" href="../styles.css" />
+
+  <!-- Style léger pour les figures (images des plans) -->
+  <style>
+    .guide-fig {
+      margin: 16px 0;
+      border: 1px solid rgba(255, 235, 190, .22);
+      border-radius: 12px;
+      background: #1f180c;
+      padding: 10px;
+    }
+    .guide-fig img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    .guide-fig figcaption {
+      margin-top: 8px;
+      font-size: .95rem;
+      color: rgba(255,255,255,.8);
+      letter-spacing: .2px;
+    }
+  </style>
 </head>
 <body>
-  <header class="site-header">
+  <header class="site-header section">
     <div class="container">
-      <nav class="breadcrumb">
+      <nav class="breadcrumb" aria-label="Fil d’Ariane">
         <a href="../membre.html">Membres</a>
         <span aria-hidden="true">›</span>
-        <a href="./guide.html">Guide pour commencer</a>
+        <a href="./index.html">Guide pour commencer</a>
         <span aria-hidden="true">›</span>
         <span aria-current="page">Onyx</span>
       </nav>
-      <h1>Onyx</h1>
-      <p class="muted">Introduction, prérequis, étapes…</p>
+
+      <h1>Onyx Facility — Guide des contrats</h1>
+      <p class="muted">
+        Ce guide résume les objectifs des contrats Onyx et les points clés par phase.
+        Les cartes détaillées sont prévues ci-dessous ; dépose simplement tes images
+        dans <code>/guide/images/onyx/</code> et elles s’afficheront.
+      </p>
     </div>
   </header>
 
   <main class="section">
     <div class="container content">
-      <h2>Introduction</h2>
-      <p>Contenu de votre guide Onyx…</p>
+      <h2>Vue d’ensemble</h2>
+      <ul>
+        <li>Plus de 100 installations souterraines ASD réparties sur les lunes de Stanton.</li>
+        <li>Accès uniquement via atterrissage dans un grand hangar.</li>
+        <li>Ennemis d’élite, faune irradiée et dangers environnementaux.</li>
+        <li>Nouvelles localisations de butin : fusil Volt Sniper &amp; armure Geist.</li>
+        <li>Les contrats <em>Mercenary</em> &amp; <em>Haul</em> s’ouvrent après P1M1 / introductions.</li>
+        <li>Contenu puzzle important &amp; aile additionnelle attendus avec la 4.3.1
+          <span class="muted">— ce guide restera « en cours » d’ici là.</span>
+        </li>
+      </ul>
 
-      <h2>Étapes</h2>
-      <ol>
-        <li>Étape 1…</li>
-        <li>Étape 2…</li>
-      </ol>
+      <h2>Investigations</h2>
 
-      <p><a class="btn" href="./guide.html">← Retour au Guide pour commencer</a></p>
+      <h3>P1M1 — Dossiers du personnel Onyx</h3>
+      <ul>
+        <li>Le contrat n’a pas de repère QT direct : navigation manuelle jusqu’à la base nécessaire.</li>
+        <li>Télécharger les données sur les premiers terminaux en <strong>Ingénierie</strong> puis en <strong>Recherche</strong>.</li>
+      </ul>
+
+      <h3>P1M2 — Dossiers d’ingénierie</h3>
+      <ul>
+        <li>Aller en <strong>Ingénierie</strong> au-delà du point de non-retour.</li>
+        <li>Traverser la zone des tuyaux puis entrer dans l’entrepôt.</li>
+        <li>L’enregistreur vocal se trouve dans un casier.</li>
+        <li>Sortie par la ventilation en passant devant un râtelier de <em>Volt Sniper</em>.</li>
+      </ul>
+
+      <h2>Phase 1 — Recherche</h2>
+
+      <h3>P1M3 — Dossiers de recherche</h3>
+      <ul>
+        <li>Descendre au niveau <strong>Recherche 7 (Analytics)</strong>.</li>
+        <li>Rejoindre le <em>puits de chute</em>.</li>
+        <li>Enregistreur vocal dans le casier de la salle de sécurité.</li>
+        <li>Trois râteliers d’armes dans la salle suivante.</li>
+        <li>Sprinter à travers le puits pour tomber au niveau inférieur et trouver une sortie cachée.</li>
+      </ul>
+
+      <h2>Phase 2 — Données</h2>
+
+      <h3>P2M1 — Anomalie énergétique</h3>
+      <ul>
+        <li>Terminal aléatoire dans la zone des condenseurs.</li>
+        <li><em>Multi-tool</em>, module <em>Cambio SRT</em> &amp; cartouche imprimables au kiosque de maintenance.</li>
+        <li>Réparer le tuyau à côté du terminal pour pouvoir télécharger sur le disque.</li>
+        <li>Livrer par l’ascenseur de fret de la station en orbite basse.</li>
+      </ul>
+
+      <h3>P2M2 — Données de sécurité</h3>
+      <ul>
+        <li>Descendre au niveau 6 (<em>Xenotechnology</em>) puis contourner vers le bureau à gauche de la grande lame.</li>
+        <li>Attention aux NPC d’élite &amp; à la force de réaction rapide qui apparaît sur le balcon opposé.</li>
+        <li>Récupérer le disque vierge sur le bureau puis descendre.</li>
+        <li>Insérer dans le terminal et attendre le transfert.</li>
+        <li>Sortir par le même chemin que P1M3 (sprint dans le puits).</li>
+        <li>Livrer à la station en orbite basse (ascenseur fret).</li>
+      </ul>
+
+      <h3>P2M3 — Données sismiques</h3>
+      <ul>
+        <li>Descendre au niveau <strong>Recherche 6 (Xenotechnology)</strong>.</li>
+        <li>Passer le puits de chute et entrer dans le laboratoire d’énergie.</li>
+        <li>Récupérer la lame serveur en zone zéro-G.</li>
+        <li>Revenir au bureau, insérer dans le rack et écrire les données.</li>
+        <li>Si la porte est fermée, utiliser la gaine de ventilation à droite pour remonter.</li>
+        <li>Livrer à la station en orbite basse.</li>
+      </ul>
+
+      <h3>P2M4 — Données de consommation d’énergie</h3>
+      <ul>
+        <li>Aller à la salle de contrôle sur la droite de <strong>l’Ingénierie</strong>.</li>
+        <li>Téléverser les données énergétiques au terminal.</li>
+        <li>Récupérer une lame serveur (emplacement aléatoire) dans la pièce voisine.</li>
+        <li>Progresser jusqu’au réacteur à carburant.</li>
+        <li>Pulses de radiation intenses toutes les 30 s : utiliser les barrières pour s’abriter et traverser la plateforme.</li>
+        <li>Continuer par la section de parkour jusqu’au <em>core</em>.</li>
+        <li>4 élites Sterling apparaissent sur chacune des 6 plateformes.</li>
+        <li>Réécrire la lame à l’extrémité du bras <em>Gamma</em>.</li>
+        <li>Sortir par les portes coupe-feu sous le logo ASD.</li>
+      </ul>
+
+      <h2>Récompenses</h2>
+      <ul>
+        <li>Accomplir les phases octroie des <strong>ASD Secure Drives</strong> échangeables auprès de <em>Wikelo</em> :
+          <ul>
+            <li>P1M3 ×5</li>
+            <li>P2M4 ×10</li>
+          </ul>
+        </li>
+        <li>Après la Phase 2, des contrats répétés deviennent disponibles (1 lecteur par contrat).</li>
+      </ul>
+
+      <hr class="muted" />
+
+      <h2>Plans & cartes (à insérer)</h2>
+      <p class="muted">Dépose tes images dans <code>/guide/images/onyx/</code>. Les noms ci-dessous sont suggérés ; modifie les <code>src</code> si tu en choisis d’autres.</p>
+
+      <figure class="guide-fig">
+        <img src="./images/onyx/page-01.png" alt="Onyx — Guide visuel, vue d’ensemble et contrats" loading="lazy">
+        <figcaption>Page 01 — Vue d’ensemble &amp; contrats (investigations, P1M1/P1M2, P1M3, P2M1–P2M4).</figcaption>
+      </figure>
+
+      <figure class="guide-fig">
+        <img src="./images/onyx/page-02.png" alt="Onyx — Carte Engineering / Traversal Map" loading="lazy">
+        <figcaption>Page 02 — Carte <strong>Engineering</strong> et schéma de parcours.</figcaption>
+      </figure>
+
+      <figure class="guide-fig">
+        <img src="./images/onyx/page-03.png" alt="Onyx — Carte Research (partie 1)" loading="lazy">
+        <figcaption>Page 03 — Carte <strong>Research</strong> (première section).</figcaption>
+      </figure>
+
+      <figure class="guide-fig">
+        <img src="./images/onyx/page-04.png" alt="Onyx — Carte Research (partie 2)" loading="lazy">
+        <figcaption>Page 04 — Carte <strong>Research</strong> (seconde section).</figcaption>
+      </figure>
+
+      <p class="muted">
+        <em>Notes :</em> pour alléger la page, des images en 1920px de large suffisent généralement. Utilise
+        <code>loading="lazy"</code> (déjà présent) pour différer le chargement hors-écran.
+      </p>
+
+      <p>
+        <a class="btn" href="./index.html">← Retour au Guide pour commencer</a>
+      </p>
     </div>
   </main>
 </body>
