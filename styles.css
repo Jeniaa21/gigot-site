@@ -678,29 +678,35 @@ select:focus {
   clip: rect(0,0,0,0); white-space: nowrap; border: 0;
 }
 /* === Breadcrumb === */
+/* === Breadcrumb === */
 .breadcrumb {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.7);
   margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
-.breadcrumb a {
+.breadcrumb a,
+.breadcrumb span {
   color: var(--paper);
   text-decoration: none;
-  border-bottom: 1px dashed rgba(255, 235, 190, 0.4);
-  transition: color 0.2s ease, border-color 0.2s ease;
+  font-weight: 800;
+  letter-spacing: .4px;
+  opacity: .75;
 }
 
 .breadcrumb a:hover,
 .breadcrumb a:focus {
+  opacity: 1;
   color: var(--gold);
-  border-color: var(--gold);
 }
 
 .breadcrumb span[aria-current="page"] {
-  font-weight: 600;
-  color: var(--paper);
+  opacity: 1; /* la page courante plus visible */
 }
+
 /* === Toolbar / recherche === */
 .toolbar {
   display: flex;
