@@ -617,3 +617,63 @@ select:focus {
   background: #1f180c;
   color: var(--paper);
 }
+/* === Tiles / Grille de tuiles (membres & guides) === */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (min-width: 640px) {
+  .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 960px) {
+  .tile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* tu peux passer à 4 colonnes si tu veux :
+@media (min-width: 1280px) { .tile-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+*/
+
+.tile {
+  display: block;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 235, 190, .22);
+  background: #1f180c;
+  color: var(--paper);
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  outline: none;
+}
+.tile:hover,
+.tile:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.25);
+  border-color: rgba(255, 235, 190, .44);
+}
+.tile:focus-visible {
+  outline: 2px solid rgba(255, 235, 190, .7);
+  outline-offset: 2px;
+}
+
+.tile-icon {
+  font-size: 32px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.tile-title {
+  margin: 0 0 6px 0;
+  font-size: 1.1rem;
+}
+.tile-desc {
+  margin: 0;
+  color: rgba(255,255,255,.75);
+}
+
+/* Accessibilité */
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
