@@ -1250,20 +1250,14 @@ async function fetchReserveCents() {
 // ——— Bot Discord announce (Edge Function) ———
 async function announceToDiscord(type, payload) {
   try {
-    const { data: { session } = {} } = await supabase.auth.getSession();
-
     const res = await fetch(`${SUPABASE_URL}/functions/v1/announce-discord`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Certains déploiements exigent Authorization: Bearer <qqchose>.
-        // On envoie le token utilisateur si dispo, sinon l'ANON KEY.
-        "Authorization": `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
         "apikey": SUPABASE_ANON_KEY
       },
       body: JSON.stringify({ type, payload }),
     });
-
     if (!res.ok) {
       const txt = await res.text();
       console.warn("[announce] Discord API error", res.status, txt);
@@ -1272,4 +1266,3 @@ async function announceToDiscord(type, payload) {
     console.warn("[announce] fetch error", e);
   }
 }
-
