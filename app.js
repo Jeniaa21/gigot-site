@@ -1,9 +1,9 @@
-// === GIGOT – app.js (prod fixes + fallback sans id) ===
+// === GIGOT – app.js (prod fixes + bot Discord announce) ===
 const SUPABASE_URL = "https://fjhsakmjcdqpolccihyj.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqaHNha21qY2RxcG9sY2NpaHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTczNTMwODgsImV4cCI6MjA3MjkyOTA4OH0.enWRFCbMC9vbVY_EVIJYnPdhk80M-UMnz3ud4fjcOxE";
 const REDIRECT_URL = "https://jeniaa21.github.io/gigot-site/";
 
-// Client Supabase avec session persistante
+// Supabase client (session persistée)
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
@@ -19,6 +19,7 @@ function setYear() {
   const y = document.getElementById("year");
   if (y) y.textContent = new Date().getFullYear();
 }
+
 function setAuthButtons(isLoggedIn) {
   window.__gigotSessionLoggedIn = !!isLoggedIn;
   const btnLogin = document.getElementById("btn-login");
@@ -27,9 +28,10 @@ function setAuthButtons(isLoggedIn) {
   if (btnLogout) btnLogout.style.display = isLoggedIn ? "inline-flex" : "none";
   updateMemberAccessButton();
 }
+
 function updateAccessClasses(flags) {
-// expose flags to CTA
-window.__gigotCanAccess = !!(flags?.in_guild && (flags.hasBasic || flags.hasStaff));
+  // expose flags to CTA
+  window.__gigotCanAccess = !!(flags?.in_guild && (flags.hasBasic || flags.hasStaff));
 
   const root = document.documentElement;
   if (flags?.in_guild && (flags.hasBasic || flags.hasStaff)) {
@@ -45,7 +47,6 @@ window.__gigotCanAccess = !!(flags?.in_guild && (flags.hasBasic || flags.hasStaf
 
 // ————— Auth / rôles Discord —————
 async function syncDiscordRoles() {
-  // sync roles; CTA updated after classes
   const { data: { session } } = await supabase.auth.getSession();
   setAuthButtons(!!session);
 
@@ -67,7 +68,7 @@ async function syncDiscordRoles() {
     if (!res.ok) {
       console.warn("[GIGOT] Sync roles KO:", data);
       updateAccessClasses({ in_guild: false });
-    refreshMembersCTA();
+      refreshMembersCTA();
       return;
     }
     updateAccessClasses({
@@ -100,8 +101,8 @@ async function logout() {
   await supabase.auth.signOut();
   setAuthButtons(false);
   updateAccessClasses({ in_guild: false });
-    refreshMembersCTA();
-    updateMemberAccessButton();
+  refreshMembersCTA();
+  updateMemberAccessButton();
 
   // redirection si on est sur la page membres
   const onMembersPage = document.body?.dataset?.page === "members" || /membre\.html$/i.test(location.pathname);
@@ -109,7 +110,7 @@ async function logout() {
     const base = (typeof getRepoBaseForGithubPages === "function") ? getRepoBaseForGithubPages() : "";
     window.location.replace(`${base}/index.html`);
   }
-} 
+}
 
 // ————— Inventaire —————
 console.log("[GIGOT] Inventaire JS chargé");
@@ -212,7 +213,6 @@ function renderTable() {
     btnDel.textContent = "🗑️";
     btnDel.title = "Supprimer";
     btnDel.style.marginLeft = "6px";
-    // ⚠️ on passe TOUT l'objet (pas juste id)
     btnDel.addEventListener("click", () => deleteItem(it));
 
     actions.appendChild(btnEdit);
@@ -255,13 +255,9 @@ async function openModal(title, item = null) {
   document.getElementById("item-unit_price").value = item?.unit_price ?? "";
   document.getElementById("item-qty").value = item?.qty ?? "";
 
-  // Charge les listes (Type / Item / Lieu / Possesseur)
   await loadDatalists();
-
   modal.style.display = "block";
 }
-
-
 
 function closeModal() {
   const modal = document.getElementById("modal");
@@ -272,8 +268,8 @@ function openAddModal() {
   editingKey = null;
   openModal("Nouvel item");
 }
+
 function openEditModal(it) {
-  // mémorise la clé originale (utile si pas d’id)
   editingKey = {
     id: it.id,
     type: it.type,
@@ -324,16 +320,13 @@ async function saveItem(e) {
   }
 }
 
-
 async function deleteItem(row) {
-  // row peut ne pas avoir id -> on gère les deux cas
   if (!confirm("Supprimer cet item ?")) return;
   try {
     let error = null;
     if (row?.id) {
       ({ error } = await supabase.from("items").delete().eq("id", row.id));
     } else {
-      // suppression via clé composite
       const match = {
         type: row.type ?? null,
         name: row.name ?? null,
@@ -389,7 +382,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnCancel) btnCancel.addEventListener("click", () => { editingKey = null; closeModal(); });
   if (form) form.addEventListener("submit", saveItem);
 
-  // Restaure la session si présente et synchronise
+  // Restaure la session et synchronise
   const { data: { session } } = await supabase.auth.getSession();
   setAuthButtons(!!session);
   await syncDiscordRoles();
@@ -399,11 +392,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   supabase.auth.onAuthStateChange(async (_event, sess) => {
     setAuthButtons(!!sess);
     await syncDiscordRoles();
-  refreshMembersCTA();
-  updateMemberAccessButton();
+    refreshMembersCTA();
+    updateMemberAccessButton();
   });
 });
-
 
 // ————— Expose helpers sur window —————
 window.syncDiscordRoles = syncDiscordRoles;
@@ -421,77 +413,27 @@ document.addEventListener("gigot-can-access", (e) => {
   wireCashboxActions();
 });
 
-// Charger les valeurs distinctes pour autocomplete
-async function loadDatalists() {
-  await Promise.all([
-    loadColumnToDatalist("type",     "dl-types"),
-    loadColumnToDatalist("name",     "dl-names"),
-    loadColumnToDatalist("location", "dl-locations"),
-    loadColumnToDatalist("owner",    "dl-owners"),
-  ]);
-}
-
-// --- Autocomplete depuis la table items ---
-async function loadDatalists() {
-  const conf = [
-    { col: "type",     dl: "dl-types" },
-    { col: "name",     dl: "dl-names" },
-    { col: "location", dl: "dl-locations" },
-    { col: "owner",    dl: "dl-owners" },
-  ];
-
-  for (const { col, dl } of conf) {
-    const { data, error } = await supabase
-      .from("items")
-      .select(col)
-      .not(col, "is", null);
-
-    if (error) {
-      console.error("[Inventaire] datalist error", col, error);
-      continue;
-    }
-
-    const values = [...new Set((data || [])
-      .map(r => (r[col] || "").trim())
-      .filter(Boolean))].sort();
-
-    const el = document.getElementById(dl);
-    if (!el) continue;
-    el.innerHTML = "";
-    for (const v of values) {
-      const opt = document.createElement("option");
-      opt.value = v;
-      el.appendChild(opt);
-    }
-  }
-}
-
-// --- Autocomplete depuis Supabase (datalist) ---
+// ——— Autocomplete (datalists) ———
 async function loadColumnToDatalist(col, dlId) {
-  // Ne tente que si l'espace est accessible (optionnel)
   if (!document.documentElement.classList.contains("can-access")) return;
-
   const dl = document.getElementById(dlId);
   if (!dl) return;
 
-  // Récupère les valeurs non-nulles / non vides
   const { data, error } = await supabase
     .from("items")
     .select(col)
-    .not(col, "is", null)   // exclut NULL
-    .neq(col, "");          // exclut chaîne vide
+    .not(col, "is", null)
+    .neq(col, "");
 
   if (error) {
     console.error("[Inventaire] datalist error", col, error);
     return;
   }
 
-  // Uniques + tri
   const values = [...new Set((data || [])
     .map(r => (r[col] || "").trim())
     .filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
 
-  // Remplit le <datalist>
   dl.innerHTML = "";
   for (const v of values) {
     const opt = document.createElement("option");
@@ -500,6 +442,15 @@ async function loadColumnToDatalist(col, dlId) {
   }
 
   console.debug(`[Inventaire] datalist ${dlId}:`, values.length, "valeurs");
+}
+
+async function loadDatalists() {
+  await Promise.all([
+    loadColumnToDatalist("type",     "dl-types"),
+    loadColumnToDatalist("name",     "dl-names"),
+    loadColumnToDatalist("location", "dl-locations"),
+    loadColumnToDatalist("owner",    "dl-owners"),
+  ]);
 }
 
 // ————— CTA "Espace membres" (page publique) —————
@@ -544,6 +495,7 @@ function refreshMembersCTA() {
   __lastLogin = isLoggedIn;
   __lastAccess = canAccess;
 }
+
 // ——— Bouton Accès membres (section CTA) ———
 function updateMemberAccessButton() {
   const btn = document.getElementById("btn-member-access");
@@ -553,7 +505,6 @@ function updateMemberAccessButton() {
   const isLoggedIn = !!window.__gigotSessionLoggedIn;
   const canAccess = document.documentElement.classList.contains("can-access");
 
-  // reset listeners proprement
   const newBtn = btn.cloneNode(true);
   btn.replaceWith(newBtn);
 
@@ -580,110 +531,10 @@ function updateMemberAccessButton() {
   }
 }
 
-
-// ===== Carousel G.I.G.O.T =====
-(function initCarousel(){
-  const root = document.querySelector(".carousel");
-  if (!root) return;
-
-  const viewport = root.querySelector(".carousel__viewport");
-  const slides   = Array.from(root.querySelectorAll(".carousel__slide"));
-  const btnPrev  = root.querySelector(".carousel__btn--prev");
-  const btnNext  = root.querySelector(".carousel__btn--next");
-  const dotsWrap = root.querySelector(".carousel__dots");
-
-  let index = 0;
-  let autoTimer = null;
-  const AUTO_MS = 4500;       // vitesse autoplay
-  const SWIPE_MIN = 30;       // px
-
-  // Dots
-  const dots = slides.map((_, i) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.setAttribute("role","tab");
-    b.setAttribute("aria-label", `Aller à l'image ${i+1}`);
-    b.addEventListener("click", () => goTo(i, true));
-    dotsWrap.appendChild(b);
-    return b;
-  });
-
-  function update(){
-    viewport.style.transform = `translateX(${-index * 100}%)`;
-    dots.forEach((d, i) => d.setAttribute("aria-selected", String(i === index)));
-  }
-
-  function goTo(i, user=false){
-    index = (i + slides.length) % slides.length;
-    update();
-    if (user) restartAuto();
-  }
-
-  function next(user=false){ goTo(index+1, user); }
-  function prev(user=false){ goTo(index-1, user); }
-
-  // Autoplay (pause au survol)
-  function startAuto(){
-    stopAuto();
-    autoTimer = setInterval(next, AUTO_MS);
-  }
-  function stopAuto(){
-    if (autoTimer){ clearInterval(autoTimer); autoTimer=null; }
-  }
-  function restartAuto(){ stopAuto(); startAuto(); }
-
-  root.addEventListener("mouseenter", stopAuto);
-  root.addEventListener("mouseleave", startAuto);
-
-  // Clavier
-  root.tabIndex = 0;
-  root.addEventListener("keydown", (e)=>{
-    if (e.key === "ArrowRight") next(true);
-    if (e.key === "ArrowLeft")  prev(true);
-  });
-
-  // Souris / Touch (swipe)
-  let startX = 0, dx = 0, dragging = false;
-
-  const onStart = (x)=>{ startX = x; dx = 0; dragging = true; stopAuto(); };
-  const onMove  = (x)=>{ if (!dragging) return; dx = x - startX; };
-  const onEnd   = ()=>{
-    if (!dragging) return;
-    dragging = false;
-    if (Math.abs(dx) > SWIPE_MIN){
-      if (dx < 0) next(true); else prev(true);
-    } else {
-      startAuto();
-    }
-  };
-
-  // Touch
-  root.addEventListener("touchstart",(e)=> onStart(e.touches[0].clientX), {passive:true});
-  root.addEventListener("touchmove", (e)=> onMove(e.touches[0].clientX),  {passive:true});
-  root.addEventListener("touchend",  onEnd);
-
-  // Mouse (optionnel)
-  root.addEventListener("mousedown",(e)=> onStart(e.clientX));
-  window.addEventListener("mousemove",(e)=> onMove(e.clientX));
-  window.addEventListener("mouseup", onEnd);
-
-  // Boutons
-  btnNext.addEventListener("click", ()=> next(true));
-  btnPrev.addEventListener("click", ()=> prev(true));
-
-  // Init
-  update();
-  startAuto();
-
-  // Accessibilité: annoncer le slide courant à l’écran
-  viewport.setAttribute("aria-live","polite");
-})();
-
 // ===== Carousel G.I.G.O.T (compatible GitHub Pages) =====
 function getRepoBaseForGithubPages() {
-  // Si on est sur <user>.github.io/<repo>/..., on récupère "/<repo>"
   if (!location.hostname.endsWith('github.io')) return '';
-  const parts = location.pathname.split('/').filter(Boolean); // ["repo", "sous/page"]
+  const parts = location.pathname.split('/').filter(Boolean);
   return parts.length ? `/${parts[0]}` : '';
 }
 
@@ -691,22 +542,22 @@ function initCarousel(){
   const root = document.querySelector(".carousel");
   if (!root) return;
 
-  const base = getRepoBaseForGithubPages();    // "" en local, "/gigot-site" en prod
+  const base = getRepoBaseForGithubPages();
   const viewport = root.querySelector(".carousel__viewport");
   const slides   = Array.from(root.querySelectorAll(".carousel__slide"));
   const btnPrev  = root.querySelector(".carousel__btn--prev");
   const btnNext  = root.querySelector(".carousel__btn--next");
   const dotsWrap = root.querySelector(".carousel__dots");
 
-  // 1) Fix des chemins d'images (on part de data-src pour être idempotent)
+  // Fix chemins images (depuis data-src)
   root.querySelectorAll('img[data-src]').forEach(img=>{
-    const rel = img.getAttribute('data-src').replace(/^\/+/, ''); // nettoie les "/"
-    const finalSrc = base ? `${base}/${rel}` : rel;               // ex: "/gigot-site/img/a.jpg"
+    const rel = img.getAttribute('data-src').replace(/^\/+/, '');
+    const finalSrc = base ? `${base}/${rel}` : rel;
     img.src = finalSrc;
     img.addEventListener('error', () => console.warn('[Carousel] 404 image:', finalSrc));
   });
 
-  // 2) Dots
+  // Dots
   dotsWrap.innerHTML = '';
   const dots = slides.map((_, i) => {
     const b = document.createElement("button");
@@ -762,7 +613,6 @@ function initCarousel(){
     } else { startAuto(); }
   };
 
-  // Touch + souris
   root.addEventListener("touchstart",(e)=> onStart(e.touches[0].clientX), {passive:true});
   root.addEventListener("touchmove", (e)=> onMove(e.touches[0].clientX),  {passive:true});
   root.addEventListener("touchend",  onEnd);
@@ -770,36 +620,30 @@ function initCarousel(){
   window.addEventListener("mousemove",(e)=> onMove(e.clientX));
   window.addEventListener("mouseup", onEnd);
 
-  // Boutons
   btnNext.addEventListener("click", ()=> next(true));
   btnPrev.addEventListener("click", ()=> prev(true));
 
-  // Init
   update();
   startAuto();
   viewport.setAttribute("aria-live","polite");
 
   console.log('[Carousel] initialisé — base:', base);
 }
-
-// lance après le DOM (ton script est déjà "defer", mais on force pour être sûr)
 window.addEventListener('DOMContentLoaded', initCarousel);
 
 // ——— Cashbox helpers ———
-// === Conversion / formatage aUEC (entiers, sans décimales) ===
+// aUEC (entiers, sans décimales)
 function auecFromValue(val) {
   if (val == null || isNaN(val)) return "—";
-  const n = Math.round(Number(val));           // entier
-  return `${n.toLocaleString("fr-FR")} aUEC`;  // ex: "12 345 aUEC"
+  const n = Math.round(Number(val));
+  return `${n.toLocaleString("fr-FR")} aUEC`;
 }
 function valueFromAuecString(str) {
-  // n’accepte que des chiffres (on ignore espaces, "aUEC", etc.)
   const cleaned = String(str).replace(/[^\d]/g, "");
   const n = Number(cleaned);
   if (!Number.isFinite(n)) return null;
-  return Math.round(n); // entier
+  return Math.round(n);
 }
-
 function fmtDateISOToFR(d) {
   if (!d) return "—";
   try { return new Date(d).toLocaleDateString("fr-FR"); } catch { return d; }
@@ -854,7 +698,7 @@ const cashboxModal = {
   }
 };
 
-// ---------- API Supabase ----------
+// ---------- API Supabase (cashbox) ----------
 async function listDonations({ limit = 50, offset = 0 } = {}) {
   return await supabase.from("donations")
     .select("*", { count: "exact" })
@@ -867,17 +711,26 @@ async function listExpenses({ limit = 50, offset = 0 } = {}) {
     .order("date", { ascending: false })
     .range(offset, offset + limit - 1);
 }
-async function createDonation(payload) {
-  return await supabase.from("donations").insert(payload).select("*").single();
-  const { data: don, error } = await createDonation(payload);
-if (error) { /* ... */ }
-await announceToDiscord("donation", {
-  giver_name: don?.giver_name ?? payload.giver_name,
-  amount_cents: don?.amount_cents ?? payload.amount_cents,
-  date: don?.date ?? payload.date
-});
 
+// ✅ Corrigé: plus de return avant l'annonce
+async function createDonation(payload) {
+  const { data: don, error } = await supabase
+    .from("donations")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error) return { error };
+
+  await announceToDiscord("donation", {
+    giver_name: don?.giver_name ?? payload.giver_name,
+    amount_cents: don?.amount_cents ?? payload.amount_cents,
+    date: don?.date ?? payload.date
+  });
+
+  return { data: don };
 }
+
 async function updateDonation(id, patch) {
   return await supabase.from("donations").update(patch).eq("id", id).select("*").single();
 }
@@ -894,7 +747,7 @@ async function deleteExpense(id) {
   return await supabase.from("expenses").delete().eq("id", id);
 }
 
-// ---------- UI ----------
+// ---------- UI (cashbox) ----------
 async function refreshCashbox() {
   const tbodyDon = document.getElementById("donations-body");
   const tbodyExp = document.getElementById("expenses-body");
@@ -992,7 +845,7 @@ function wireCashboxActions() {
         { id: "notes", label: "Notes", type: "text", placeholder: "(optionnel)" },
       ],
       onSubmit: async (fd) => {
-        const amount_cents = valueFromAuecString(fd.get("amount")); // stocké en entier aUEC
+        const amount_cents = valueFromAuecString(fd.get("amount"));
         if (amount_cents == null) { alert("Montant invalide"); return; }
         const payload = {
           giver_name: fd.get("giver_name"),
@@ -1014,19 +867,15 @@ function wireCashboxActions() {
     cashboxModal.show({
       title: "Ajouter une dépense",
       fields: [
-        // Toggle retrait personnel
         { id: "is_pw", label: "Retrait personnel", type: "checkbox" },
-
-        // --- Champs Retrait Perso ---
+        // Retrait perso
         { id: "beneficiary_name", label: "Bénéficiaire", type: "text", placeholder: "Pseudo (ou nom)", required: false },
         { id: "requested", label: "Montant demandé (aUEC)", type: "text", placeholder: "ex: 100000", required: false },
         { id: "malus_pct", label: "Taux de malus (%)", type: "number", placeholder: "20", required: false },
-
-          // --- Champs Orga ---
+        // Orga
         { id: "reason", label: "Raison / Objet (orga)", type: "text", placeholder: "ex: Achat consommables", required: false },
         { id: "amount", label: "Montant (aUEC)", type: "text", placeholder: "ex: 250000", required: false },
         { id: "r_max", label: "Cap r_max (%) (optionnel)", type: "number", placeholder: "ex: 20", required: false },
-
         // commun
         { id: "date", label: "Date", type: "date", required: true },
         { id: "notes", label: "Notes", type: "text", placeholder: "(optionnel)" },
@@ -1075,9 +924,6 @@ function wireCashboxActions() {
           if (expense_cents == null || expense_cents <= 0) { alert("Montant invalide"); return; }
           if (r_max_pct != null && !(r_max_pct >= 0 && r_max_pct <= 100)) { alert("r_max invalide"); return; }
 
-          // (Optionnel) tu peux d’abord simuler:
-          // const sim = await supabase.rpc("org_expense", { p_reason: reason, p_expense_cents: expense_cents, p_date: date, p_notes: notes, p_r_max_pct: r_max_pct, p_dry_run: true });
-
           const { data, error } = await supabase.rpc("org_expense", {
             p_reason: reason,
             p_expense_cents: expense_cents,
@@ -1100,12 +946,11 @@ function wireCashboxActions() {
         }
 
         cashboxModal.hide();
-        await refreshCashboxAndCharts(); // recharges tableaux + graphe
+        await refreshCashboxAndCharts();
       }
     });
 
-    // —— Post-render: wiring preview dynamique (UX)
-    // Affiche / masque les champs selon la case
+    // Post-render: UI dynamique
     const $ = (id) => document.getElementById(id);
     const toggle = () => {
       const is_pw = $("is_pw")?.checked;
@@ -1113,16 +958,15 @@ function wireCashboxActions() {
       ["reason","amount","r_max"].forEach(id => $(id)?.closest(".form-row").classList.toggle("hidden", is_pw));
     };
     $("is_pw")?.addEventListener("change", toggle);
-    toggle(); // init
+    toggle();
 
-    // Preview retrait perso (net / malus)
+    // Aperçu retrait perso
     const showPreview = () => {
       const req = valueFromAuecString($("requested")?.value || "");
       const pct = Number($("malus_pct")?.value || 20);
       if (req && pct >=0 && pct<=100) {
         const malus  = Math.floor(req * (pct/100));
         const payout = req - malus;
-        // petit helper UI
         let box = $("pw-preview");
         if (!box) {
           box = document.createElement("div");
@@ -1136,7 +980,6 @@ function wireCashboxActions() {
     $("requested")?.addEventListener("input", showPreview);
     $("malus_pct")?.addEventListener("input", showPreview);
   });
-
 
   // Délégation pour édit/suppr
   const onTableClick = async (e, type) => {
@@ -1168,7 +1011,7 @@ function wireCashboxActions() {
             { id: "notes", label: "Notes", type: "text", value: data.notes || "" },
           ],
           onSubmit: async (fd) => {
-            const amount_cents = valueFromAuecString(fd.get("amount")); // entier aUEC
+            const amount_cents = valueFromAuecString(fd.get("amount"));
             if (amount_cents == null) { alert("Montant invalide"); return; }
             const patch = {
               giver_name: fd.get("giver_name"),
@@ -1192,7 +1035,7 @@ function wireCashboxActions() {
             { id: "notes", label: "Justif / Notes", type: "text", value: data.notes || "" },
           ],
           onSubmit: async (fd) => {
-            const amount_cents = valueFromAuecString(fd.get("amount")); // entier aUEC
+            const amount_cents = valueFromAuecString(fd.get("amount"));
             if (amount_cents == null) { alert("Montant invalide"); return; }
             const patch = {
               reason: fd.get("reason"),
@@ -1213,10 +1056,10 @@ function wireCashboxActions() {
   document.getElementById("donations-table")?.addEventListener("click", (e) => onTableClick(e, "don"));
   document.getElementById("expenses-table")?.addEventListener("click", (e) => onTableClick(e, "dep"));
 }
+
 // ====== DONATIONS PIE (Chart.js) ======
 let donationsPieChart = null;
 
-// Données: fetch optionnellement filtrées par date
 async function fetchDonations({ from, to } = {}) {
   let q = supabase.from("donations").select("giver_name,amount_cents,date").order("date", { ascending: false });
   if (from) q = q.gte("date", from);
@@ -1224,7 +1067,6 @@ async function fetchDonations({ from, to } = {}) {
   return q;
 }
 
-// Agrège {giver_name: somme}
 function aggregateDonationsByPerson(donations, { minPercent = 0.02 } = {}) {
   const sums = new Map();
   for (const d of (donations || [])) {
@@ -1235,10 +1077,8 @@ function aggregateDonationsByPerson(donations, { minPercent = 0.02 } = {}) {
   const entries = Array.from(sums.entries());
   const totalDon = entries.reduce((s, [,v]) => s + v, 0);
 
-  // tri desc par montant
   entries.sort((a,b) => b[1] - a[1]);
 
-  // Regroupe < minPercent en “Autres”
   const main = [];
   let other = 0;
   for (const [name, val] of entries) {
@@ -1249,9 +1089,9 @@ function aggregateDonationsByPerson(donations, { minPercent = 0.02 } = {}) {
   if (other > 0) main.push(["Autres", other]);
 
   return {
-    donorEntries: entries,           // triés desc
-    main,                            // [ [name,val], ... , ["Autres", other?] ]
-    totalDon                         // total dons (hors réserve)
+    donorEntries: entries,
+    main,
+    totalDon
   };
 }
 
@@ -1265,33 +1105,11 @@ function getPeriodRangeFromSelect() {
   if (v === "all") return { from: null, to: null, label: "Tout" };
   if (v === "ytd") return { from: `${today.getFullYear()}-01-01`, to, label: "Année en cours" };
 
-  // v = nb de jours (30 / 90 / 365)
   const days = Number(v);
   const d = new Date(today);
   d.setDate(d.getDate() - days);
   const from = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   return { from, to, label: `${days} jours` };
-}
-
-function buildPieSummaryText(agg) {
-  if (!agg || !agg.total) return "Aucune donnée disponible.";
-  // top 4 pour le résumé
-  const list = [];
-  const denom = agg.total || 1;
-  let i = 0;
-  for (const [name, val] of agg.entries) {
-    const pct = Math.round((val / denom) * 1000) / 10; // 1 décimale
-    list.push(`${name} ${pct}%`);
-    if (++i >= 4) break;
-  }
-  // Si “Autres”
-  if (agg.labels.includes("Autres")) {
-    const idx = agg.labels.indexOf("Autres");
-    const val = agg.values[idx];
-    const pct = Math.round((val / denom) * 1000) / 10;
-    list.push(`Autres ${pct}%`);
-  }
-  return `Top contributeurs : ${list.join(", ")}.`;
 }
 
 async function renderDonationsByPersonPie({ from, to } = {}) {
@@ -1303,27 +1121,20 @@ async function renderDonationsByPersonPie({ from, to } = {}) {
   if (fallback) { fallback.style.display = "block"; fallback.textContent = "Chargement…"; }
   if (summary)  { summary.textContent = ""; }
 
-  // 1) fetch dons (+ filtre) et réserve en parallèle
   let q = supabase.from("donations").select("giver_name,amount_cents,date").order("date", { ascending: false });
   if (from) q = q.gte("date", from);
   if (to)   q = q.lte("date", to);
-  const [{ data: donations, error: eDon }, reserveCents] = await Promise.all([
-    q, fetchReserveCents()
-  ]);
+  const [{ data: donations, error: eDon }, reserveCents] = await Promise.all([ q, fetchReserveCents() ]);
   if (eDon) {
     console.error("[donations pie] fetch error", eDon);
     if (fallback) { fallback.style.display = "block"; fallback.textContent = "Erreur de chargement."; }
     return;
   }
-
-  // 2) agrégation par personne (dons)
+  
   const agg = aggregateDonationsByPerson(donations, { minPercent: 0.02 });
-
-  // 3) construire labels+values avec la réserve comme tranche dédiée
   const labels = agg.main.map(([n]) => n);
   const values = agg.main.map(([,v]) => v);
 
-  // Ajout tranche "Réserve (gelée)" à la fin — on ne la regroupe jamais dans “Autres”
   const reserveVal = Math.max(0, Number(reserveCents) || 0);
   if (reserveVal > 0) {
     labels.push("Réserve (gelée)");
@@ -1369,9 +1180,7 @@ async function renderDonationsByPersonPie({ from, to } = {}) {
     }
   });
 
-  // Résumé texte (top 3 + réserve si présente)
   if (summary) {
-    // repartir depuis les valeurs non groupées (donorEntries) pour top clair
     const top = (agg.donorEntries || []).slice(0, 3).map(([n,v]) => {
       const pct = grandTotal ? Math.round((v / grandTotal) * 1000) / 10 : 0;
       return `${n} ${pct}%`;
@@ -1384,7 +1193,6 @@ async function renderDonationsByPersonPie({ from, to } = {}) {
   }
 }
 
-// ——— Filtre période
 function wireDonationsPieFilters() {
   const sel = document.getElementById("donations-period");
   if (!sel) return;
@@ -1394,21 +1202,19 @@ function wireDonationsPieFilters() {
   });
 }
 
-// Appels de mise à jour : après refreshCashbox + après CRUD dons
 document.addEventListener("gigot-can-access", () => {
   wireDonationsPieFilters();
   const { from, to } = getPeriodRangeFromSelect();
   renderDonationsByPersonPie({ from, to });
 });
 
-// Si tu as déjà ces fonctions, ajoute juste la ligne "renderDonationsByPersonPie(...)"
 async function refreshCashboxAndCharts() {
   await refreshCashbox();
   const { from, to } = getPeriodRangeFromSelect();
   renderDonationsByPersonPie({ from, to });
 }
 
-// Intègre la MAJ après CRUD dons (là où tu appelles déjà refreshCashbox)
+// Post-wrap pour rafraîchir après CRUD dons
 const _createDonation = createDonation;
 createDonation = async (...args) => {
   const res = await _createDonation(...args);
@@ -1427,13 +1233,12 @@ deleteDonation = async (...args) => {
   await refreshCashboxAndCharts();
   return res;
 };
-// Réserve (part gelée) — lit la vue si dispo, sinon calcule côté client
+
+// Réserve (part gelée)
 async function fetchReserveCents() {
-  // Essai via vue (recommandé)
   const { data, error } = await supabase.from('v_reserve_balance').select('reserve_cents').single();
   if (!error && data && typeof data.reserve_cents === 'number') return data.reserve_cents;
 
-  // Fallback: calcule depuis expenses / reserve_uses (si la vue n'existe pas)
   const [{ data: pw }, { data: uses }] = await Promise.all([
     supabase.from('expenses').select('malus_cents').eq('is_personal_withdrawal', true),
     supabase.from('reserve_uses').select('used_cents'),
@@ -1441,21 +1246,23 @@ async function fetchReserveCents() {
   const sum = (arr, key) => (arr || []).reduce((s, r) => s + (Number(r[key]) || 0), 0);
   return Math.max(0, sum(pw, 'malus_cents') - sum(uses, 'used_cents'));
 }
+
+// ——— Bot Discord announce (Edge Function) ———
 async function announceToDiscord(type, payload) {
   try {
-    await fetch(`${SUPABASE_URL}/functions/v1/announce-discord`, {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/announce-discord`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": SUPABASE_ANON_KEY, // obligatoire
-        // tu peux aussi propager la session si tu veux vérifier côté edge
-        ...(supabase.auth.getSession
-          ? { "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` }
-          : {})
+        "apikey": SUPABASE_ANON_KEY
       },
       body: JSON.stringify({ type, payload }),
     });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.warn("[announce] Discord API error", res.status, txt);
+    }
   } catch (e) {
-    console.warn("[announce] ignore error", e);
+    console.warn("[announce] fetch error", e);
   }
 }
