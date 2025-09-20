@@ -127,16 +127,14 @@ let editingKey = null; // {id?, type, name, location, owner}
 
 function renderError(msg) {
   const tbody = document.getElementById("inv-body");
-  const __frag = document.createDocumentFragment();
-const pag = document.getElementById("pagination");
+  const pag = document.getElementById("pagination");
   if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="padding:8px;">${msg}</td></tr>`;
   if (pag) pag.innerHTML = "";
 }
 
 function clearInventoryUI() {
   const tbody = document.getElementById("inv-body");
-  const __frag = document.createDocumentFragment();
-const pag = document.getElementById("pagination");
+  const pag = document.getElementById("pagination");
   if (tbody) tbody.innerHTML = "";
   if (pag) pag.innerHTML = "";
 }
@@ -178,8 +176,7 @@ function applyFilters() {
 
 function renderTable() {
   const tbody = document.getElementById("inv-body");
-  const __frag = document.createDocumentFragment();
-if (!tbody) return;
+  if (!tbody) return;
   tbody.innerHTML = "";
 
   const start = (currentPage - 1) * PAGE_SIZE;
@@ -222,7 +219,7 @@ if (!tbody) return;
     actions.appendChild(btnDel);
     tr.appendChild(actions);
 
-    __frag.appendChild(tr);
+    tbody.appendChild(tr);
   }
 
   renderPagination();
@@ -363,22 +360,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (btnLogout) btnLogout.addEventListener("click", logout);
 
   // Recherche
-  
-// Debounced search input listener (improves INP)
-(function() {
   const search = document.getElementById("search");
-  if (search) {
-    let __debounceTimer;
-    search.addEventListener("input", () => {
-      clearTimeout(__debounceTimer);
-      __debounceTimer = setTimeout(() => {
-        if (typeof currentPage !== 'undefined') currentPage = 1;
-        if (typeof applyFilters === 'function') applyFilters();
-      }, 150);
-    }, { passive: true });
-  }
-})();
-const search = document.getElementById("search");
   if (search) search.addEventListener("input", () => { currentPage = 1; applyFilters(); });
 
   // Tri
@@ -1290,6 +1272,3 @@ async function announceToDiscord(type, payload) {
     console.warn("[announce] fetch error", e);
   }
 }
-
-// Batch append rows to minimize reflows
-try { const tbody = document.getElementById('inv-body'); if (tbody) { tbody.innerHTML=''; tbody.appendChild(__frag); } } catch(e) {}

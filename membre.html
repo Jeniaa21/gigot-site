@@ -41,7 +41,7 @@
   <header class="site-header">
     <div class="container nav-wrap">
       <a href="./index.html" class="logo" aria-label="Accueil G.I.G.O.T">
-        <span class="logo-mark"><img src="img/logoGIGOT.png" alt="Logo G.I.G.O.T" class="logo-img" fetchpriority="high" decoding="async"></span>
+        <span class="logo-mark"><img src="img/logoGIGOT.png" alt="Logo G.I.G.O.T" class="logo-img"></span>
         <span class="logo-text">G.I.G.O.T</span>
       </a>
       <nav aria-label="Navigation principale">
@@ -100,7 +100,7 @@
             </table>
 
             <!-- Pagination -->
-            <div id="pagination" aria-live="polite"></div>
+            <div id="pagination"></div>
 
             <!-- Bouton ajout -->
             <button id="btn-add" class="btn btn-primary">➕ Ajouter</button>
@@ -116,22 +116,22 @@
 
       <div class="form-row">
         <label for="item-type">Type</label>
-        <input id="item-type" type="text" required list="dl-types" placeholder="ex: Armure, Composant..." />
+        <input id="item-type" type="text" required list="dl-type" placeholder="ex: Armure, Composant..." />
       </div>
 
       <div class="form-row">
         <label for="item-name">Item</label>
-        <input id="item-name" type="text" required list="dl-names" placeholder="ex: Perle de Valakar" />
+        <input id="item-name" type="text" required list="dl-item" placeholder="ex: Perle de Valakar" />
       </div>
 
       <div class="form-row">
         <label for="item-location">Lieu</label>
-        <input id="item-location" type="text" list="dl-locations" placeholder="ex: New Babbage" />
+        <input id="item-location" type="text" list="dl-location" placeholder="ex: New Babbage" />
       </div>
 
       <div class="form-row">
         <label for="item-owner">Possesseur</label>
-        <input id="item-owner" type="text" list="dl-owners" placeholder="ex: Pseudo" />
+        <input id="item-owner" type="text" list="dl-owner" placeholder="ex: Pseudo" />
       </div>
 
       <div class="form-row">
@@ -151,10 +151,10 @@
     </form>
 
     <!-- Datalists nécessaires (remplis par app.js / loadDatalists) -->
-    <datalist id="dl-types"></datalist>
-    <datalist id="dl-names"></datalist>
-    <datalist id="dl-locations"></datalist>
-    <datalist id="dl-owners"></datalist>
+    <datalist id="dl-type"></datalist>
+    <datalist id="dl-item"></datalist>
+    <datalist id="dl-location"></datalist>
+    <datalist id="dl-owner"></datalist>
   </div>
 </div>
 
