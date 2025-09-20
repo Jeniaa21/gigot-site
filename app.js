@@ -1411,3 +1411,57 @@ async function fetchReserveCents() {
   const sum = (arr, key) => (arr || []).reduce((s, r) => s + (Number(r[key]) || 0), 0);
   return Math.max(0, sum(pw, 'malus_cents') - sum(uses, 'used_cents'));
 }
+async function announceToDiscord(type, payload) {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/announce-discord`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, payload }),
+    });
+  } catch (e) {
+    console.warn("[announce] ignore error", e);
+  }
+}
+const { data: don, error } = await createDonation(payload);
+if (error) { /* ... */ }
+await announceToDiscord("donation", {
+  giver_name: don?.giver_name ?? payload.giver_name,
+  amount_cents: don?.amount_cents ?? payload.amount_cents,
+  date: don?.date ?? payload.date
+});
+const { data, error } = await supabase.rpc("personal_withdrawal", {
+  p_beneficiary_name: beneficiary_name,
+  p_requested_cents: requested_cents,
+  p_malus_rate_pct: malus_rate_pct,
+  p_date: date,
+  p_notes: notes
+});
+if (!error) {
+  await announceToDiscord("expense", {
+    is_personal_withdrawal: true,
+    beneficiary_name,
+    requested_cents,
+    malus_rate_pct,
+    malus_cents: data?.malus_cents ?? Math.floor(requested_cents * (malus_rate_pct/100)),
+    payout_cents: data?.payout_cents,
+    date
+  });
+}
+const { data, error } = await supabase.rpc("org_expense", {
+  p_reason: reason,
+  p_expense_cents: expense_cents,
+  p_date: date,
+  p_notes: notes,
+  p_r_max_pct: r_max_pct
+});
+if (!error) {
+  await announceToDiscord("expense", {
+    is_personal_withdrawal: false,
+    reason,
+    amount_cents: expense_cents,
+    used_from_reserve: data?.used_from_reserve ?? null,
+    rate_applied: data?.rate_applied ?? null,
+    shortfall: data?.shortfall ?? null,
+    date
+  });
+}
