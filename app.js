@@ -1445,7 +1445,14 @@ async function announceToDiscord(type, payload) {
   try {
     await fetch(`${SUPABASE_URL}/functions/v1/announce-discord`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY, // obligatoire
+        // tu peux aussi propager la session si tu veux vérifier côté edge
+        ...(supabase.auth.getSession
+          ? { "Authorization": `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` }
+          : {})
+      },
       body: JSON.stringify({ type, payload }),
     });
   } catch (e) {
