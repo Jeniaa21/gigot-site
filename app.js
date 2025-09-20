@@ -1250,14 +1250,19 @@ async function fetchReserveCents() {
 // ——— Bot Discord announce (Edge Function) ———
 async function announceToDiscord(type, payload) {
   try {
+    const { data: { session } = {} } = await supabase.auth.getSession();
+
     const res = await fetch(`${SUPABASE_URL}/functions/v1/announce-discord`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": SUPABASE_ANON_KEY
+        "apikey": SUPABASE_ANON_KEY,
+        // 🔑 obligatoire : on fournit un Authorization
+        "Authorization": `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({ type, payload }),
     });
+
     if (!res.ok) {
       const txt = await res.text();
       console.warn("[announce] Discord API error", res.status, txt);
