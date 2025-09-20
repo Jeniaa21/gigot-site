@@ -869,6 +869,14 @@ async function listExpenses({ limit = 50, offset = 0 } = {}) {
 }
 async function createDonation(payload) {
   return await supabase.from("donations").insert(payload).select("*").single();
+  const { data: don, error } = await createDonation(payload);
+if (error) { /* ... */ }
+await announceToDiscord("donation", {
+  giver_name: don?.giver_name ?? payload.giver_name,
+  amount_cents: don?.amount_cents ?? payload.amount_cents,
+  date: don?.date ?? payload.date
+});
+
 }
 async function updateDonation(id, patch) {
   return await supabase.from("donations").update(patch).eq("id", id).select("*").single();
@@ -1045,6 +1053,17 @@ function wireCashboxActions() {
             p_date: date,
             p_notes: notes
           });
+          if (!error) {
+            await announceToDiscord("expense", {
+              is_personal_withdrawal: true,
+              beneficiary_name,
+              requested_cents,
+              malus_rate_pct,
+              malus_cents: data?.malus_cents ?? Math.floor(requested_cents * (malus_rate_pct/100)),
+              payout_cents: data?.payout_cents,
+              date
+            });
+          }
           if (error) { alert("Erreur: " + error.message); return; }
         } else {
           // Dépense d’orga
@@ -1066,6 +1085,17 @@ function wireCashboxActions() {
             p_notes: notes,
             p_r_max_pct: r_max_pct
           });
+          if (!error) {
+            await announceToDiscord("expense", {
+              is_personal_withdrawal: false,
+              reason,
+              amount_cents: expense_cents,
+              used_from_reserve: data?.used_from_reserve ?? null,
+              rate_applied: data?.rate_applied ?? null,
+              shortfall: data?.shortfall ?? null,
+              date
+            });
+          }
           if (error) { alert("Erreur: " + error.message); return; }
         }
 
@@ -1421,47 +1451,4 @@ async function announceToDiscord(type, payload) {
   } catch (e) {
     console.warn("[announce] ignore error", e);
   }
-}
-const { data: don, error } = await createDonation(payload);
-if (error) { /* ... */ }
-await announceToDiscord("donation", {
-  giver_name: don?.giver_name ?? payload.giver_name,
-  amount_cents: don?.amount_cents ?? payload.amount_cents,
-  date: don?.date ?? payload.date
-});
-const { data, error } = await supabase.rpc("personal_withdrawal", {
-  p_beneficiary_name: beneficiary_name,
-  p_requested_cents: requested_cents,
-  p_malus_rate_pct: malus_rate_pct,
-  p_date: date,
-  p_notes: notes
-});
-if (!error) {
-  await announceToDiscord("expense", {
-    is_personal_withdrawal: true,
-    beneficiary_name,
-    requested_cents,
-    malus_rate_pct,
-    malus_cents: data?.malus_cents ?? Math.floor(requested_cents * (malus_rate_pct/100)),
-    payout_cents: data?.payout_cents,
-    date
-  });
-}
-const { data, error } = await supabase.rpc("org_expense", {
-  p_reason: reason,
-  p_expense_cents: expense_cents,
-  p_date: date,
-  p_notes: notes,
-  p_r_max_pct: r_max_pct
-});
-if (!error) {
-  await announceToDiscord("expense", {
-    is_personal_withdrawal: false,
-    reason,
-    amount_cents: expense_cents,
-    used_from_reserve: data?.used_from_reserve ?? null,
-    rate_applied: data?.rate_applied ?? null,
-    shortfall: data?.shortfall ?? null,
-    date
-  });
 }
