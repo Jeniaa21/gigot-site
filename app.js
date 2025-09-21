@@ -190,10 +190,11 @@ function renderTable() {
       it.name,
       it.location ?? "",
       it.owner ?? "",
-      (Number(it.unit_price ?? 0)).auecFromValue(2),
+      auecFromValue(Number(it.unit_price ?? 0)),
       String(it.qty ?? 0),
-      (Number(it.valeur_totale ?? 0)).auecFromValue(2)
+      auecFromValue(Number(it.valeur_totale ?? 0))
     ];
+
     cells.forEach((val, i) => {
       const td = document.createElement("td");
       td.textContent = val;
@@ -224,6 +225,7 @@ function renderTable() {
 
   renderPagination();
 }
+
 
 function renderPagination() {
   const div = document.getElementById("pagination");
