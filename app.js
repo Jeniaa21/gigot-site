@@ -1126,19 +1126,26 @@ async function renderDonationsByPersonPie({ from, to } = {}) {
   if (fallback) { fallback.style.display = "block"; fallback.textContent = "Chargement…"; }
   if (summary)  { summary.textContent = ""; }
 
-  let q = supabase.from("donations").select("giver_name,amount_cents,date").order("date", { ascending: false });
-  if (from) q = q.gte("date", from);
+  // 🔥 On ne prend plus "donations", mais la vue v_parts_live
+  let q = supabase.from("v_parts_live").select("member_name, part_cents");
+  if (from) q = q.gte("date", from); // si ta vue inclut date (à ajuster selon ton schéma)
   if (to)   q = q.lte("date", to);
-  const [{ data: donations, error: eDon }, reserveCents] = await Promise.all([ q, fetchReserveCents() ]);
-  if (eDon) {
-    console.error("[donations pie] fetch error", eDon);
+
+  const [{ data: parts, error: eParts }, reserveCents] = await Promise.all([ q, fetchReserveCents() ]);
+  if (eParts) {
+    console.error("[parts pie] fetch error", eParts);
     if (fallback) { fallback.style.display = "block"; fallback.textContent = "Erreur de chargement."; }
     return;
   }
 
-  const agg = aggregateDonationsByPerson(donations, { minPercent: 0.02 });
-  const labels = agg.main.map(([n]) => n);
-  const values = agg.main.map(([,v]) => v);
+  const labels = [];
+  const values = [];
+  for (const row of (parts || [])) {
+    if (row.part_cents > 0) {
+      labels.push(row.member_name || "Anonyme");
+      values.push(row.part_cents);
+    }
+  }
 
   const reserveVal = Math.max(0, Number(reserveCents) || 0);
   if (reserveVal > 0) {
@@ -1186,17 +1193,15 @@ async function renderDonationsByPersonPie({ from, to } = {}) {
   });
 
   if (summary) {
-    const top = (agg.donorEntries || []).slice(0, 3).map(([n,v]) => {
+    const top = labels.map((n,i) => {
+      const v   = values[i];
       const pct = grandTotal ? Math.round((v / grandTotal) * 1000) / 10 : 0;
       return `${n} ${pct}%`;
-    });
-    if (reserveVal > 0) {
-      const pctRes = Math.round((reserveVal / grandTotal) * 1000) / 10;
-      top.push(`Réserve ${pctRes}%`);
-    }
-    summary.textContent = top.length ? `Top : ${top.join(", ")}.` : "";
+    }).slice(0, 4); // Top 3 + réserve
+    summary.textContent = top.length ? `Répartition : ${top.join(", ")}.` : "";
   }
 }
+
 
 function wireDonationsPieFilters() {
   const sel = document.getElementById("donations-period");
