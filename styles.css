@@ -337,7 +337,6 @@ body::after{
   box-shadow: var(--shadow);
 }
 #inv-table th, #inv-table td{
-  border: 1px solid rgba(255,235,190,.14);
   padding: 10px 12px;
 }
 #inv-table th{
