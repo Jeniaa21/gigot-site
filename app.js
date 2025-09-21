@@ -190,9 +190,9 @@ function renderTable() {
       it.name,
       it.location ?? "",
       it.owner ?? "",
-      (Number(it.unit_price ?? 0)).toFixed(2),
+      (Number(it.unit_price ?? 0)).auecFromValue(2),
       String(it.qty ?? 0),
-      (Number(it.valeur_totale ?? 0)).toFixed(2)
+      (Number(it.valeur_totale ?? 0)).auecFromValue(2)
     ];
     cells.forEach((val, i) => {
       const td = document.createElement("td");
@@ -284,17 +284,19 @@ async function saveItem(e) {
   e.preventDefault();
 
   const id = document.getElementById("item-id").value.trim();
-  const unit_price = parseFloat(document.getElementById("item-unit_price").value || "0") || 0;
-  const qty = parseInt(document.getElementById("item-qty").value || "0", 10) || 0;
+
+  // On parse les champs avec les helpers aUEC
+  const unit_price = valueFromAuecString(document.getElementById("item-unit_price").value || "0") ?? 0;
+  const qty        = parseInt(document.getElementById("item-qty").value || "0", 10) || 0;
 
   const payload = {
-    type: (document.getElementById("item-type").value || "").trim(),
-    name: (document.getElementById("item-name").value || "").trim(),
-    location: (document.getElementById("item-location").value || "").trim(),
-    owner: (document.getElementById("item-owner").value || "").trim(),
+    type:      (document.getElementById("item-type").value || "").trim(),
+    name:      (document.getElementById("item-name").value || "").trim(),
+    location:  (document.getElementById("item-location").value || "").trim(),
+    owner:     (document.getElementById("item-owner").value || "").trim(),
     unit_price,
     qty,
-    valeur_totale: unit_price * qty,
+    valeur_totale: unit_price * qty,   // stocké en entiers aUEC
     updated_at: new Date().toISOString()
   };
 
@@ -319,6 +321,7 @@ async function saveItem(e) {
     alert("Erreur inattendue lors de l’enregistrement.");
   }
 }
+
 
 async function deleteItem(row) {
   if (!confirm("Supprimer cet item ?")) return;
