@@ -354,7 +354,7 @@ body::after{
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;   /* espace constant entre Modifier / Supprimer */
+  gap: 3px;   /* espace constant entre Modifier / Supprimer */
 }
 
 #inv-table td:last-child button {
